@@ -4,12 +4,48 @@
 
 #include "pch.h"
 #include "Game.h"
+#include "vector"
+
+#pragma comment(lib,"d3dcompiler.lib")
+#include <d3dcompiler.h>
 
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
+
+struct Vertex {
+    XMFLOAT3 position;
+};
+
+
+struct Model {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned short> indices;
+};
+
+Model CreateTriangle() {
+    Model model;
+    model.vertices = {
+        { XMFLOAT3(0.0f, 0.5f, 0.0f) },   //  頂点 : 0
+        { XMFLOAT3(0.5f, -0.5f, 0.0f) },  //  頂点 : 1
+        { XMFLOAT3(-0.5f, -0.5f, 0.0f) }, //  頂点 : 2
+    };
+    model.indices = {
+        0,1,2,
+    };
+    return model;
+}
+
+Model model;
+
+ID3D11Buffer* vertexBuffer = nullptr;
+ID3D11Buffer* indexBuffer = nullptr;
+
+ID3D11VertexShader* verteShader = nullptr;
+ID3D11PixelShader* pixelShader = nullptr;
+ID3D11InputLayout* inputLayout = nullptr;
 
 Game::Game() noexcept(false)
 {
@@ -43,6 +79,9 @@ void Game::Initialize(HWND window, int width, int height)
 // Executes the basic game loop.
 void Game::Tick()
 {
+struct Vertex {
+    XMFLOAT3 position;
+};
     m_timer.Tick([&]()
     {
         Update(m_timer);
@@ -77,6 +116,18 @@ void Game::Render()
     auto context = m_deviceResources->GetD3DDeviceContext();
 
     // TODO: Add your rendering code here.
+    context->VSSetShader(verteShader,nullptr,0);
+    context->PSSetShader(pixelShader,nullptr,0);
+    context->IASetInputLayout(inputLayout);
+
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+    context->IASetVertexBuffers(0,1,&vertexBuffer,&stride,&offset);
+    context->IASetIndexBuffer(indexBuffer,DXGI_FORMAT_R16_UINT,0);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    context->DrawIndexed(model.indices.size(), 0, 0);
+    
     context;
 
     m_deviceResources->PIXEndEvent();
@@ -161,13 +212,101 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
 }
 #pragma endregion
 
+/// <summary>
+/// 頂点情報を作成する
+/// </summary>
+void CreateVertexBuffer(ID3D11Device* device,Model& model,ID3D11Buffer** createdBuffer){
+
+    D3D11_BUFFER_DESC vertexBufferDesc = {
+        static_cast<UINT>(model.vertices.size() * sizeof(Vertex)),
+        D3D11_USAGE_DEFAULT,
+        D3D11_BIND_VERTEX_BUFFER,
+        0, 0, 0
+    };
+
+    D3D11_SUBRESOURCE_DATA vertexSubresourceData = {
+        model.vertices.data(), // 修正: 実際のデータへのポインタ
+        0, 0
+    };
+
+    //   頂点バッファを生成する
+    device->CreateBuffer(&vertexBufferDesc,&vertexSubresourceData,createdBuffer);
+}
+
+void CreateIndexBuffer(ID3D11Device* device,Model& model,ID3D11Buffer** createdBuffer) {
+
+    D3D11_BUFFER_DESC indexBufferDesc = {
+        static_cast<UINT>(model.indices.size() * sizeof(unsigned short)),
+        D3D11_USAGE_DEFAULT,
+        D3D11_BIND_INDEX_BUFFER,
+        0,0,0
+    };
+
+    D3D11_SUBRESOURCE_DATA indexSubresourceData = {
+        model.indices.data(),
+        0,0
+    };
+
+    device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, createdBuffer);
+}
+
+ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** createdShader) {
+
+    //  頂点シェーダーを読み込みコンパイルする
+    ComPtr<ID3DBlob> compiledVS;
+    D3DCompileFromFile(L"VertexShader.hlsl",nullptr,nullptr,"main","vs_5_0",0,0,&compiledVS,nullptr);
+
+    //  頂点シェーダーを生成する
+    device->CreateVertexShader(compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), nullptr, createdShader);
+
+    return compiledVS;
+}
+
+ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** createdShader) {
+    //  ピクセルシェーダーを読み込みコンパイルする
+    ComPtr<ID3DBlob> compiledPS;
+    D3DCompileFromFile(L"PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &compiledPS, nullptr);
+
+    //  ピクセルシェーダーを生成する
+    device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, &pixelShader);
+
+    return compiledPS;
+}
+
+void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLayout** createdLayout) {
+    //  頂点インプットレイアウトを生成
+    std::vector<D3D11_INPUT_ELEMENT_DESC> layout = {
+        { "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0 }
+    };
+
+    //  頂点インプットレイアウトを生成する
+    device->CreateInputLayout(&layout[0], layout.size(), compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), &inputLayout);
+}
+
 #pragma region Direct3D Resources
 // These are the resources that depend on the device.
 void Game::CreateDeviceDependentResources()
 {
     auto device = m_deviceResources->GetD3DDevice();
 
-    // TODO: Initialize device dependent objects here (independent of window size).
+    //  モデルの情報を生成
+    model = CreateTriangle();
+
+    //  頂点情報を作成して、GPUに転送する
+    CreateVertexBuffer(device, model, &vertexBuffer);
+
+    //  インデックス情報を作成して、GPUに転送する
+    CreateIndexBuffer(device, model, &indexBuffer);
+
+    //  頂点シェーダーを生成する
+    ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
+    //  頂点インプットレイアウトを生成する
+    CreateInputLayout(device, compiledVS.Get(), &inputLayout);
+
+    //  ピクセルシェーダーを生成する
+    ComPtr<ID3DBlob> compiledPS = CreatePixelShader(device, &pixelShader);
+
+
     device;
 }
 
