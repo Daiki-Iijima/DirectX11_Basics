@@ -2,9 +2,8 @@
 // Game.cpp
 //
 
-#include "pch.h"
+#include "Common/pch.h"
 #include "Game.h"
-#include "vector"
 
 #pragma comment(lib,"d3dcompiler.lib")
 #include <d3dcompiler.h>
@@ -256,7 +255,7 @@ ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** c
 
     //  頂点シェーダーを読み込みコンパイルする
     ComPtr<ID3DBlob> compiledVS;
-    D3DCompileFromFile(L"VertexShader.hlsl",nullptr,nullptr,"main","vs_5_0",0,0,&compiledVS,nullptr);
+    D3DCompileFromFile(L"Shader/VertexShader.hlsl",nullptr,nullptr,"main","vs_5_0",0,0,&compiledVS,nullptr);
 
     //  頂点シェーダーを生成する
     device->CreateVertexShader(compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), nullptr, createdShader);
@@ -267,7 +266,7 @@ ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** c
 ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** createdShader) {
     //  ピクセルシェーダーを読み込みコンパイルする
     ComPtr<ID3DBlob> compiledPS;
-    D3DCompileFromFile(L"PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &compiledPS, nullptr);
+    D3DCompileFromFile(L"Shader/PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &compiledPS, nullptr);
 
     //  ピクセルシェーダーを生成する
     device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, &pixelShader);
