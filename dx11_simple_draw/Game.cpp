@@ -28,12 +28,14 @@ struct Model {
 Model CreateTriangle() {
     Model model;
     model.vertices = {
-        { XMFLOAT3(0.0f, 0.5f, 0.0f) },   //  頂点 : 0
-        { XMFLOAT3(0.5f, -0.5f, 0.0f) },  //  頂点 : 1
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f) }, //  頂点 : 2
+        { XMFLOAT3(-0.5f, 0.5f, 0.0f) },   //  頂点 : 0
+        { XMFLOAT3(0.5f, 0.5f, 0.0f) },    //  頂点 : 1
+        { XMFLOAT3(0.5f, -0.5f, 0.0f) },   //  頂点 : 2
+        { XMFLOAT3(-0.5f, -0.5f, 0.0f) },  //  頂点 : 3
     };
     model.indices = {
         0,1,2,
+        0,2,3,
     };
     return model;
 }
