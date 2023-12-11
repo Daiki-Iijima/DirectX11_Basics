@@ -348,6 +348,7 @@ void Game::OnDeviceLost()
     indexBuffer->Release();
     verteShader->Release();
     pixelShader->Release();
+    inputLayout->Release();
 }
 
 void Game::OnDeviceRestored()
