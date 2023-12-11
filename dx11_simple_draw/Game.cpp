@@ -27,14 +27,12 @@ struct Model {
 Model CreateTriangle() {
     Model model;
     model.vertices = {
-        { XMFLOAT3(-0.5f, 0.5f, 0.0f) },   //  頂点 : 0
-        { XMFLOAT3(0.5f, 0.5f, 0.0f) },    //  頂点 : 1
-        { XMFLOAT3(0.5f, -0.5f, 0.0f) },   //  頂点 : 2
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f) },  //  頂点 : 3
+        { XMFLOAT3(0.0f, 0.5f, 0.0f) },   //  頂点 : 0
+        { XMFLOAT3(0.5f, -0.5f, 0.0f) },  //  頂点 : 1
+        { XMFLOAT3(-0.5f, -0.5f, 0.0f) }, //  頂点 : 2
     };
     model.indices = {
         0,1,2,
-        0,2,3,
     };
     return model;
 }
@@ -251,6 +249,9 @@ void CreateIndexBuffer(ID3D11Device* device,Model& model,ID3D11Buffer** createdB
     device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, createdBuffer);
 }
 
+/// <summary>
+/// 頂点シェーダを生成
+/// </summary>
 ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** createdShader) {
 
     //  頂点シェーダーを読み込みコンパイルする
@@ -263,6 +264,9 @@ ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** c
     return compiledVS;
 }
 
+/// <summary>
+/// ピクセルシェーダを生成する
+/// </summary>
 ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** createdShader) {
     //  ピクセルシェーダーを読み込みコンパイルする
     ComPtr<ID3DBlob> compiledPS;
@@ -274,6 +278,9 @@ ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** cre
     return compiledPS;
 }
 
+/// <summary>
+/// 頂点インプットレイアウトを生成する
+/// </summary>
 void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLayout** createdLayout) {
     //  頂点インプットレイアウトを生成
     std::vector<D3D11_INPUT_ELEMENT_DESC> layout = {
@@ -281,6 +288,7 @@ void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLa
     };
 
     //  頂点インプットレイアウトを生成する
+    //  シェーダとレイアウトの型の互換性を担保する必要がある
     device->CreateInputLayout(&layout[0], layout.size(), compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), &inputLayout);
 }
 
@@ -301,11 +309,12 @@ void Game::CreateDeviceDependentResources()
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
-    //  頂点インプットレイアウトを生成する
-    CreateInputLayout(device, compiledVS.Get(), &inputLayout);
 
     //  ピクセルシェーダーを生成する
     ComPtr<ID3DBlob> compiledPS = CreatePixelShader(device, &pixelShader);
+
+    //  頂点インプットレイアウトを生成する
+    CreateInputLayout(device, compiledVS.Get(), &inputLayout);
 
 
     device;
@@ -320,6 +329,10 @@ void Game::CreateWindowSizeDependentResources()
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
+    vertexBuffer->Release();
+    indexBuffer->Release();
+    verteShader->Release();
+    pixelShader->Release();
 }
 
 void Game::OnDeviceRestored()
