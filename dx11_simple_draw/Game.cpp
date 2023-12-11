@@ -37,6 +37,21 @@ Model CreateTriangle() {
     return model;
 }
 
+Model CreateSquare() {
+    Model model;
+    model.vertices = {
+        { XMFLOAT3(-0.5f, 0.5f, 0.0f) },   //  頂点 : 0
+        { XMFLOAT3(0.5f, 0.5f, 0.0f) },    //  頂点 : 1
+        { XMFLOAT3(0.5f, -0.5f, 0.0f) },   //  頂点 : 2
+        { XMFLOAT3(-0.5f, -0.5f, 0.0f) },  //  頂点 : 3
+    };
+    model.indices = {
+        0,1,2,
+        0,2,3,
+    };
+    return model;
+}
+
 Model model;
 
 ID3D11Buffer* vertexBuffer = nullptr;
@@ -299,7 +314,7 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     //  モデルの情報を生成
-    model = CreateTriangle();
+    model = CreateSquare();
 
     //  頂点情報を作成して、GPUに転送する
     CreateVertexBuffer(device, model, &vertexBuffer);
