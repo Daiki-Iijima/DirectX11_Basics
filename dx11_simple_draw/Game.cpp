@@ -24,31 +24,29 @@ struct Model {
     std::vector<unsigned short> indices;
 };
 
-Model CreateTriangle() {
+Model CreateRegularPolygon(int n) {
     Model model;
-    model.vertices = {
-        { XMFLOAT3(0.0f, 0.5f, 0.0f) },   //  頂点 : 0
-        { XMFLOAT3(0.5f, -0.5f, 0.0f) },  //  頂点 : 1
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f) }, //  頂点 : 2
-    };
-    model.indices = {
-        0,1,2,
-    };
-    return model;
-}
+    if (n < 3) {
+        // エラーチェック：3未満の頂点数は正多角形を形成できません
+        return model;
+    }
 
-Model CreateSquare() {
-    Model model;
-    model.vertices = {
-        { XMFLOAT3(-0.5f, 0.5f, 0.0f) },   //  頂点 : 0
-        { XMFLOAT3(0.5f, 0.5f, 0.0f) },    //  頂点 : 1
-        { XMFLOAT3(0.5f, -0.5f, 0.0f) },   //  頂点 : 2
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f) },  //  頂点 : 3
-    };
-    model.indices = {
-        0,1,2,
-        0,2,3,
-    };
+    float radius = 1.f;
+
+    for (int i = 0; i < n; i++) {
+        float angle = XM_2PI * i / n;
+        float x = radius * cosf(angle);
+        float y = radius * sinf(angle);
+        model.vertices.push_back({ XMFLOAT3(x, y, 0.0f) });
+    }
+
+    //  時計回りで頂点を結ぶ
+    for (int i = 1; i < n - 1; i++) {
+        model.indices.push_back(0);
+        model.indices.push_back(i + 1);
+        model.indices.push_back(i);
+    }
+
     return model;
 }
 
@@ -314,7 +312,7 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     //  モデルの情報を生成
-    model = CreateSquare();
+    model = CreateRegularPolygon(5);
 
     //  頂点情報を作成して、GPUに転送する
     CreateVertexBuffer(device, model, &vertexBuffer);
@@ -330,7 +328,6 @@ void Game::CreateDeviceDependentResources()
 
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
-
 
     device;
 }
