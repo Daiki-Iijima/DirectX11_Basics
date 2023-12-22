@@ -73,6 +73,7 @@ Game::Game() noexcept(false)
     //   Add DX::DeviceResources::c_AllowTearing to opt-in to variable rate displays.
     //   Add DX::DeviceResources::c_EnableHDR for HDR10 display.
     m_deviceResources->RegisterDeviceNotify(this);
+
 }
 
 // Initialize the Direct3D resources required to run.
@@ -92,6 +93,9 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetFixedTimeStep(true);
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
+
+    //  ワールド座標を設定する
+    m_world = XMMatrixIdentity();
 }
 
 #pragma region Frame Update
@@ -115,10 +119,6 @@ void Game::Update(DX::StepTimer const& timer)
     float elapsedTime = float(timer.GetElapsedSeconds());
 
     // TODO: Add your game logic here.
-    //  ビュー行列でカメラを回転させる
-    float angle = elapsedTime * XM_PIDIV4 / 2; //  90度/秒
-    XMMATRIX rotation = XMMatrixRotationY(angle);
-    m_view = XMMatrixMultiply(rotation, m_view);
 
     elapsedTime;
 }
@@ -367,6 +367,9 @@ void Game::CreateDeviceDependentResources()
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
 
+    //  定数バッファを生成する
+    CreateConstantBuffer(m_deviceResources->GetD3DDevice(), &constantBuffer);
+
     device;
 }
 
@@ -392,12 +395,6 @@ void Game::CreateWindowSizeDependentResources()
     float farZ = 100.0f;                                      // 遠クリップ面
 
     m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
-
-    //  ワールド座標を設定する
-    m_world = XMMatrixIdentity();
-
-    //  定数バッファを生成する
-    CreateConstantBuffer(m_deviceResources->GetD3DDevice(), &constantBuffer);
 }
 
 void Game::OnDeviceLost()
