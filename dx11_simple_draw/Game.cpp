@@ -18,6 +18,11 @@ struct Vertex {
     XMFLOAT3 position;
 };
 
+struct ConstantBuffer {
+    XMFLOAT4X4 world;
+    XMFLOAT4X4 view;
+    XMFLOAT4X4 projection;
+};
 
 struct Model {
     std::vector<Vertex> vertices;
@@ -59,6 +64,8 @@ ID3D11VertexShader* verteShader = nullptr;
 ID3D11PixelShader* pixelShader = nullptr;
 ID3D11InputLayout* inputLayout = nullptr;
 
+ID3D11Buffer* constantBuffer = nullptr;
+
 Game::Game() noexcept(false)
 {
     m_deviceResources = std::make_unique<DX::DeviceResources>();
@@ -66,6 +73,7 @@ Game::Game() noexcept(false)
     //   Add DX::DeviceResources::c_AllowTearing to opt-in to variable rate displays.
     //   Add DX::DeviceResources::c_EnableHDR for HDR10 display.
     m_deviceResources->RegisterDeviceNotify(this);
+
 }
 
 // Initialize the Direct3D resources required to run.
@@ -85,6 +93,9 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetFixedTimeStep(true);
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
+
+    //  ワールド座標を設定する
+    m_world = XMMatrixIdentity();
 }
 
 #pragma region Frame Update
@@ -108,6 +119,7 @@ void Game::Update(DX::StepTimer const& timer)
     float elapsedTime = float(timer.GetElapsedSeconds());
 
     // TODO: Add your game logic here.
+
     elapsedTime;
 }
 #pragma endregion
@@ -132,11 +144,22 @@ void Game::Render()
     context->PSSetShader(pixelShader,nullptr,0);
     context->IASetInputLayout(inputLayout);
 
+    //  コンスタントバッファを設定する
+    ConstantBuffer cb;
+    //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
+    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(m_world));
+    XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
+    XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
+    context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+
     UINT stride = sizeof(Vertex);
     UINT offset = 0;
     context->IASetVertexBuffers(0,1,&vertexBuffer,&stride,&offset);
     context->IASetIndexBuffer(indexBuffer,DXGI_FORMAT_R16_UINT,0);
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    //  定数バッファを設定する
+    context->VSSetConstantBuffers(0,1,&constantBuffer);
 
     context->DrawIndexed(model.indices.size(), 0, 0);
     
@@ -305,6 +328,21 @@ void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLa
     device->CreateInputLayout(&layout[0], layout.size(), compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), &inputLayout);
 }
 
+/// <summary>
+/// 定数バッファを生成する
+/// </summary>
+void CreateConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
+    //  定数バッファを生成する
+    D3D11_BUFFER_DESC constantBufferDesc = {
+        sizeof(ConstantBuffer),
+        D3D11_USAGE_DEFAULT,
+        D3D11_BIND_CONSTANT_BUFFER,
+        0,0,0
+    };
+
+    HRESULT result = device->CreateBuffer(&constantBufferDesc, nullptr, createdBuffer);
+}
+
 #pragma region Direct3D Resources
 // These are the resources that depend on the device.
 void Game::CreateDeviceDependentResources()
@@ -329,6 +367,9 @@ void Game::CreateDeviceDependentResources()
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
 
+    //  定数バッファを生成する
+    CreateConstantBuffer(m_deviceResources->GetD3DDevice(), &constantBuffer);
+
     device;
 }
 
@@ -336,6 +377,24 @@ void Game::CreateDeviceDependentResources()
 void Game::CreateWindowSizeDependentResources()
 {
     // TODO: Initialize windows-size dependent objects here.
+    //  画面サイズを取得
+    auto size = m_deviceResources->GetOutputSize();
+
+    //  カメラの設定
+    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f); //  視点は原点からZ軸負方向
+    XMVECTOR forcusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);  //  注視点は原点
+    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);  //  上方向はY軸
+
+    //  ビュー行列を生成
+    m_view = XMMatrixLookAtLH(eyePosition,forcusPoint,upDirection);
+
+    //  プロジェクション行列を生成
+    float fovAngleY =  XMConvertToRadians( 45.0f );           // 垂直方向の視野角（ラジアン単位）
+    float aspectRatio = size.right / size.bottom;             // アスペクト比
+    float nearZ = 0.01f;                                      // 近クリップ面
+    float farZ = 100.0f;                                      // 遠クリップ面
+
+    m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
 }
 
 void Game::OnDeviceLost()
@@ -346,6 +405,7 @@ void Game::OnDeviceLost()
     verteShader->Release();
     pixelShader->Release();
     inputLayout->Release();
+    constantBuffer->Release();
 }
 
 void Game::OnDeviceRestored()

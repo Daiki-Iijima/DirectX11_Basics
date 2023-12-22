@@ -60,4 +60,11 @@ private:
 
     // Rendering loop timer.
     DX::StepTimer                           m_timer;
+
+    //  ワールド座標行列
+    DirectX::XMMATRIX                      m_world;
+    //  ビュー行列
+    DirectX::XMMATRIX                      m_view;
+    //  プロジェクション行列
+    DirectX::XMMATRIX                      m_projection;
 };
