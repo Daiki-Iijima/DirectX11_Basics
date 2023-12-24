@@ -17,6 +17,7 @@ using Microsoft::WRL::ComPtr;
 
 struct Vertex {
     XMFLOAT3 position;
+    XMFLOAT3 normal;
 };
 
 struct ConstantBuffer {
@@ -321,7 +322,8 @@ ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** cre
 void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLayout** createdLayout) {
     //  頂点インプットレイアウトを生成
     std::vector<D3D11_INPUT_ELEMENT_DESC> layout = {
-        { "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0 }
+        { "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0 },
+        { "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0}
     };
 
     //  頂点インプットレイアウトを生成する
@@ -357,7 +359,8 @@ void Game::CreateDeviceDependentResources()
     const aiScene* scene = importer.ReadFile(
         "Models/teapot.obj",
         aiProcess_Triangulate |
-        aiProcess_JoinIdenticalVertices
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_GenNormals  // 法線情報の計算を追加
     );
 
     if (!scene) {
@@ -374,7 +377,9 @@ void Game::CreateDeviceDependentResources()
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex vertex;
             aiVector3D pos = mesh->mVertices[i];
+            aiVector3D normal = mesh->mNormals[i];
             vertex.position = DirectX::XMFLOAT3(pos.x, pos.y, pos.z);
+            vertex.normal = DirectX::XMFLOAT3(normal.x, normal.y, normal.z);
             model.vertices.push_back(vertex);
         }
 
