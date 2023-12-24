@@ -7,6 +7,10 @@
 #include "Common/DeviceResources.h"
 #include "Common/StepTimer.h"
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.

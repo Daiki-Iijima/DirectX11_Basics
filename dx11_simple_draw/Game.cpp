@@ -7,6 +7,7 @@
 
 #pragma comment(lib,"d3dcompiler.lib")
 #include <d3dcompiler.h>
+#include <iostream>
 
 extern void ExitGame() noexcept;
 
@@ -95,7 +96,7 @@ void Game::Initialize(HWND window, int width, int height)
     */
 
     //  ワールド座標を設定する
-    m_world = XMMatrixIdentity();
+    m_world = XMMatrixTranslation(0.0f, -1.5f, 5.0f);
 }
 
 #pragma region Frame Update
@@ -350,7 +351,41 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     //  モデルの情報を生成
-    model = CreateRegularPolygon(5);
+    //model = CreateRegularPolygon(5);
+    //  モデルの読み込み
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(
+        "Models/teapot.obj",
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices
+    );
+
+    if (!scene) {
+        // エラーハンドリング
+        std::string errorStr = "ERROR: " + std::string(importer.GetErrorString()) + "\n";
+        std::wstring errorWStr = std::wstring(errorStr.begin(), errorStr.end());
+        OutputDebugString(errorWStr.c_str());
+    }
+
+    for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
+        aiMesh* mesh = scene->mMeshes[m];
+
+        // 頂点情報の抽出
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+            Vertex vertex;
+            aiVector3D pos = mesh->mVertices[i];
+            vertex.position = DirectX::XMFLOAT3(pos.x, pos.y, pos.z);
+            model.vertices.push_back(vertex);
+        }
+
+        // インデックス情報の抽出
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            aiFace face = mesh->mFaces[i];
+            for (unsigned int j = 0; j < face.mNumIndices; j++) {
+                model.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
+            }
+        }
+    }
 
     //  頂点情報を作成して、GPUに転送する
     CreateVertexBuffer(device, model, &vertexBuffer);
