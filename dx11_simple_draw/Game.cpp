@@ -117,6 +117,7 @@ struct Vertex {
 
 float z = -5.0f;
 float x = 0.f;
+float y = 0.f;
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
@@ -136,13 +137,17 @@ void Game::Update(DX::StepTimer const& timer)
     if (GetAsyncKeyState('A') & 0x8000) {
         x -= 1.f * elapsedTime;
     }
+    if (GetAsyncKeyState('Q') & 0x8000) {
+        y += 1.f * elapsedTime;
+    }
+    if (GetAsyncKeyState('E') & 0x8000) {
+        y -= 1.f * elapsedTime;
+    }
 
-    //  �J�����̐ݒ�
-    XMVECTOR eyePosition = XMVectorSet(x, 0.0f, z, 0.0f); //  ���_�͌��_����Z��������
-    XMVECTOR forcusPoint = XMVectorSet(x, 0.0f, z + 5.f, 0.0f);  //  �����_�͏�ɐ���+5
-    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);  //  �������Y��
+    XMVECTOR eyePosition = XMVectorSet(x, y, z, 0.0f);
+    XMVECTOR forcusPoint = XMVectorSet(x, y, z + 5.f, 0.0f);
+    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-    //  �r���[�s��𐶐�
     m_view = XMMatrixLookAtLH(eyePosition, forcusPoint, upDirection);
 
     elapsedTime;
