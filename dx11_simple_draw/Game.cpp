@@ -8,6 +8,7 @@
 #pragma comment(lib,"d3dcompiler.lib")
 #include <d3dcompiler.h>
 #include <iostream>
+#include <Camera.h>
 
 extern void ExitGame() noexcept;
 
@@ -59,6 +60,8 @@ Model CreateRegularPolygon(int n) {
 
 Model model;
 
+Camera* camera;
+
 ID3D11Buffer* vertexBuffer = nullptr;
 ID3D11Buffer* indexBuffer = nullptr;
 
@@ -98,6 +101,8 @@ void Game::Initialize(HWND window, int width, int height)
 
     //  ワールド座標を設定する
     m_world = XMMatrixTranslation(0.0f, -1.5f, 5.0f);
+    //  カメラの初期化
+    camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 #pragma region Frame Update
@@ -115,67 +120,62 @@ struct Vertex {
     Render();
 }
 
-XMVECTOR CameraPosition = XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f);
-XMVECTOR CameraTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 
-float cameraHorizontalAngle = 0.f;
-float cameraVerticalAngle = 0.f;
+void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,XMMATRIX& view) {
+    //  正面方向を計算して正規化
+    XMVECTOR forward = camera->GetForward();
+    XMVECTOR right = camera->GetRight();
+
+    //  現在のカメラの位置を取得
+    XMVECTOR cameraPos = camera->GetPosition();
+    XMVECTOR cameraRotation = camera->GetDegressRotation();
+
+    if (GetAsyncKeyState('W') & 0x8000) {
+        cameraPos += forward * elapsedTime * moveSpeed;
+    }
+    if (GetAsyncKeyState('S') & 0x8000) {
+        cameraPos -= forward * elapsedTime * moveSpeed;
+    }
+    if (GetAsyncKeyState('D') & 0x8000) {
+        cameraPos -= right * elapsedTime * moveSpeed;
+    }
+    if (GetAsyncKeyState('A') & 0x8000) {
+        cameraPos += right * elapsedTime * moveSpeed;
+    }
+    if (GetAsyncKeyState('Q') & 0x8000) {
+        cameraPos -= XMVector3Cross(forward,right) * elapsedTime * moveSpeed;
+    }
+    if (GetAsyncKeyState('E') & 0x8000) {
+        cameraPos += XMVector3Cross(forward,right) * elapsedTime * moveSpeed;
+    }
+
+    camera->SetPosition(cameraPos);
+
+    //  視線方向を変更する処理を追加
+    if (GetAsyncKeyState(VK_UP) & 0x8000) {
+        cameraRotation += XMVectorSet(elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
+    }
+    if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
+        cameraRotation += XMVectorSet(-elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
+    }
+    if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
+        cameraRotation += XMVectorSet(0.0f,elapsedTime * rotateSpeed,  0.0f, 0.0f);
+    }
+    if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
+        cameraRotation += XMVectorSet(0.0f,-elapsedTime * rotateSpeed,  0.0f, 0.0f);
+    }
+
+    camera->SetDegressRotation(XMVectorGetX(cameraRotation), XMVectorGetY(cameraRotation), XMVectorGetZ(cameraRotation));
+
+    camera->GetViewMatrix(view);
+}
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
 
-    //  正面方向を計算して正規化
-    XMVECTOR forward = XMVector3Normalize(CameraTarget - CameraPosition);
-    XMVECTOR right = XMVector3Cross(forward, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
-
-    // TODO: Add your game logic here.
-    if (GetAsyncKeyState('W') & 0x8000) {
-        CameraPosition += forward * elapsedTime;
-    }
-    if (GetAsyncKeyState('S') & 0x8000) {
-        CameraPosition -= forward * elapsedTime;
-    }
-    if (GetAsyncKeyState('D') & 0x8000) {
-        CameraPosition -= right * elapsedTime;
-    }
-    if (GetAsyncKeyState('A') & 0x8000) {
-        CameraPosition += right * elapsedTime;
-    }
-    if (GetAsyncKeyState('Q') & 0x8000) {
-        CameraPosition -= XMVector3Cross(forward,right) * elapsedTime;
-    }
-    if (GetAsyncKeyState('E') & 0x8000) {
-        CameraPosition += XMVector3Cross(forward,right) * elapsedTime;
-    }
-
-    //  視線方向を変更する処理を追加
-    if (GetAsyncKeyState(VK_UP) & 0x8000) {
-        cameraVerticalAngle += elapsedTime;
-    }
-    if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
-        cameraVerticalAngle -= elapsedTime;
-    }
-    if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
-        cameraHorizontalAngle += elapsedTime;
-    }
-    if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
-        cameraHorizontalAngle -= elapsedTime;
-    }
-
-    // カメラの向きを計算
-    XMVECTOR cameraDirection = XMVectorSet(
-        cosf(cameraVerticalAngle) * sinf(cameraHorizontalAngle), // X方向
-        sinf(cameraVerticalAngle),                               // Y方向 (ピッチ)
-        cosf(cameraVerticalAngle) * cosf(cameraHorizontalAngle), // Z方向
-        0.0f);
-
-    CameraTarget = CameraPosition + cameraDirection;
-
-    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    m_view = XMMatrixLookAtLH(CameraPosition, CameraTarget, upDirection);
+    UpdateCameraTransform(5.0f, 20.0f, elapsedTime, m_view);
 
     elapsedTime;
 }

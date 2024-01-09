@@ -179,12 +179,14 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\DeviceResources.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="Common\pch.h" />
     <ClInclude Include="Common\StepTimer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Common\DeviceResources.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Main.cpp" />
