@@ -10,6 +10,13 @@
 #include <iostream>
 #include <Camera.h>
 
+#pragma comment(lib,"d2d1.lib")
+#pragma comment(lib,"dwrite.lib")
+#include<shtypes.h>
+#include<wingdi.h>
+#include<d2d1.h>
+#include<dwrite.h>
+
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
@@ -71,6 +78,14 @@ ID3D11InputLayout* inputLayout = nullptr;
 
 ID3D11Buffer* constantBuffer = nullptr;
 
+
+ComPtr<IDWriteTextFormat> textFormat;
+ComPtr<ID2D1Factory> d2dFactory;
+
+//  描画するテキスト
+std::wstring cameraPositionText;
+std::wstring cameraRotationText;
+
 Game::Game() noexcept(false)
 {
     m_deviceResources = std::make_unique<DX::DeviceResources>();
@@ -103,6 +118,36 @@ void Game::Initialize(HWND window, int width, int height)
     m_world = XMMatrixTranslation(0.0f, -1.5f, 5.0f);
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+
+    //  Direct2Dの初期化
+    //  DirectWriteとDirect2Dのファクトリを作成
+    Microsoft::WRL::ComPtr<IDWriteFactory> writeFactory;
+    DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &writeFactory);
+
+    HRESULT hr = D2D1CreateFactory(
+        D2D1_FACTORY_TYPE_SINGLE_THREADED,
+        __uuidof(ID2D1Factory),
+        nullptr,  // オプションであるD2D1_FACTORY_OPTIONS構造体へのポインタ（nullの場合はデフォルトオプション）
+        reinterpret_cast<void**>(d2dFactory.GetAddressOf())
+    );
+    if (FAILED(hr)) {
+        // エラー処理
+    }
+
+    // テキストフォーマットを作成
+    hr = writeFactory->CreateTextFormat(
+        L"Segoe UI",                // フォントファミリー名
+        nullptr,                    // フォントコレクション（nullptr = システムフォントコレクション）
+        DWRITE_FONT_WEIGHT_NORMAL,  // フォントの太さ
+        DWRITE_FONT_STYLE_NORMAL,   // フォントスタイル
+        DWRITE_FONT_STRETCH_NORMAL, // フォントの伸縮
+        20.0f,                      // フォントサイズ
+        L"en-us",                   // ロケール
+        &textFormat);
+
+    if (FAILED(hr)) {
+        // エラー処理
+    }
 }
 
 #pragma region Frame Update
@@ -175,10 +220,21 @@ void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
 
-    UpdateCameraTransform(5.0f, 20.0f, elapsedTime, m_view);
+    UpdateCameraTransform(5.0f, 90.0f, elapsedTime, m_view);
+
+    //  カメラの更新した座標をテキストとして取得
+    cameraPositionText = L"[Camera Position]\nX:" +
+        std::to_wstring(camera->GetPosition().m128_f32[0]) + L"\n" +
+        L"Y:" + std::to_wstring(camera->GetPosition().m128_f32[1]) + L"\n" +
+        L"Z:" + std::to_wstring(camera->GetPosition().m128_f32[2]) + L"\n";
+    cameraRotationText = L"[Camera Rotation]\nX:" +
+        std::to_wstring(camera->GetDegressRotation().m128_f32[0]) + L"\n" +
+        L"Y:" + std::to_wstring(camera->GetDegressRotation().m128_f32[1]) + L"\n" +
+        L"Z:" + std::to_wstring(camera->GetDegressRotation().m128_f32[2]) + L"\n";
 
     elapsedTime;
 }
+
 #pragma endregion
 
 #pragma region Frame Render
@@ -223,6 +279,74 @@ void Game::Render()
     context;
 
     m_deviceResources->PIXEndEvent();
+
+
+    // DeviceResources で SwapChain のバックバッファを取得
+    Microsoft::WRL::ComPtr<IDXGISurface> backBuffer;
+    HRESULT hr = m_deviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+
+
+    // Direct2D レンダーターゲットプロパティを設定
+    D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
+        D2D1_RENDER_TARGET_TYPE_DEFAULT,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+        0,
+        0);
+
+    // Direct2D レンダーターゲットを作成
+    Microsoft::WRL::ComPtr<ID2D1RenderTarget> d2dRenderTarget;
+    hr = d2dFactory->CreateDxgiSurfaceRenderTarget(backBuffer.Get(), &props, &d2dRenderTarget);
+
+    //  テキスト用のブラシを作成
+    ComPtr<ID2D1SolidColorBrush> textColorBrush;
+    D2D1_COLOR_F textColor = D2D1::ColorF(D2D1::ColorF::Black,1.f);
+    d2dRenderTarget->CreateSolidColorBrush(textColor, &textColorBrush);
+
+    //  CameraPosition用の背景色を作成
+    ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
+    D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.5f);
+    d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
+
+    //  CameraRotation用の背景色を作成
+    ComPtr<ID2D1SolidColorBrush> rotationBackColorBrush;
+    D2D1_COLOR_F rotationBackColor = D2D1::ColorF(D2D1::ColorF::Gray, 0.5f);
+    d2dRenderTarget->CreateSolidColorBrush(rotationBackColor, &rotationBackColorBrush);
+
+    // 描画開始
+    d2dRenderTarget->BeginDraw();
+
+    //  表示用領域を定義
+    D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 200, 130);
+    D2D_RECT_F rotationInfoRect = D2D1::RectF(20, 140, 200, 250);
+
+    //  カメラ位置情報を描画
+    //  背景を描画
+    d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+    //  テキストを描画
+    d2dRenderTarget->DrawText(
+        cameraPositionText.c_str(),         // 描画するテキスト
+        static_cast<UINT32>(cameraPositionText.length()), // テキストの長さ
+        textFormat.Get(),           // テキストフォーマット
+        positionInfoRect,               // 描画する領域
+        textColorBrush.Get());            // ブラシ
+
+    //  背景を描画
+    d2dRenderTarget->FillRectangle(rotationInfoRect, rotationBackColorBrush.Get());
+    //  テキストを描画
+    d2dRenderTarget->DrawText(
+        cameraRotationText.c_str(),         // 描画するテキスト
+        static_cast<UINT32>(cameraRotationText.length()), // テキストの長さ
+        textFormat.Get(),           // テキストフォーマット
+        rotationInfoRect,           // 描画する領域
+        textColorBrush.Get());            // ブラシ
+
+    // 描画終了
+    hr = d2dRenderTarget->EndDraw();
+
+    if (FAILED(hr)) {
+        // エラー処理
+        return;
+    }
 
     // Show the new frame.
     m_deviceResources->Present();
