@@ -83,8 +83,7 @@ ComPtr<IDWriteTextFormat> textFormat;
 ComPtr<ID2D1Factory> d2dFactory;
 
 //  描画するテキスト
-std::wstring cameraPositionText;
-std::wstring cameraRotationText;
+std::wstring cameraInfoStr;
 
 Game::Game() noexcept(false)
 {
@@ -168,12 +167,12 @@ struct Vertex {
 
 void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,XMMATRIX& view) {
     //  正面方向を計算して正規化
-    XMVECTOR forward = camera->GetForward();
-    XMVECTOR right = camera->GetRight();
+    XMVECTOR forward = camera->GetTransform().GetForward();
+    XMVECTOR right = camera->GetTransform().GetRight();
 
     //  現在のカメラの位置を取得
-    XMVECTOR cameraPos = camera->GetPosition();
-    XMVECTOR cameraRotation = camera->GetDegressRotation();
+    XMVECTOR cameraPos = camera->GetTransform().GetPosition();
+    XMVECTOR cameraRotation = camera->GetTransform().GetDegressRotation();
 
     if (GetAsyncKeyState('W') & 0x8000) {
         cameraPos += forward * elapsedTime * moveSpeed;
@@ -194,14 +193,14 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
         cameraPos += XMVector3Cross(forward,right) * elapsedTime * moveSpeed;
     }
 
-    camera->SetPosition(cameraPos);
+    camera->GetTransform().SetPosition(cameraPos);
 
     //  視線方向を変更する処理を追加
     if (GetAsyncKeyState(VK_UP) & 0x8000) {
-        cameraRotation += XMVectorSet(elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
+        cameraRotation += XMVectorSet(-elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
     }
     if (GetAsyncKeyState(VK_DOWN) & 0x8000) {
-        cameraRotation += XMVectorSet(-elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
+        cameraRotation += XMVectorSet(elapsedTime * rotateSpeed, 0.0f, 0.0f, 0.0f);
     }
     if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
         cameraRotation += XMVectorSet(0.0f,elapsedTime * rotateSpeed,  0.0f, 0.0f);
@@ -209,8 +208,14 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
     if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
         cameraRotation += XMVectorSet(0.0f,-elapsedTime * rotateSpeed,  0.0f, 0.0f);
     }
+    if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+        cameraRotation += XMVectorSet(0.0f, 0.0f, elapsedTime * rotateSpeed, 0.0f);
+    }
+    if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+        cameraRotation += XMVectorSet(0.0f, 0.0f, -elapsedTime * rotateSpeed, 0.0f);
+    }
 
-    camera->SetDegressRotation(XMVectorGetX(cameraRotation), XMVectorGetY(cameraRotation), XMVectorGetZ(cameraRotation));
+    camera->GetTransform().SetDegressRotation(XMVectorGetX(cameraRotation), XMVectorGetY(cameraRotation), XMVectorGetZ(cameraRotation));
 
     camera->GetViewMatrix(view);
 }
@@ -223,14 +228,7 @@ void Game::Update(DX::StepTimer const& timer)
     UpdateCameraTransform(5.0f, 90.0f, elapsedTime, m_view);
 
     //  カメラの更新した座標をテキストとして取得
-    cameraPositionText = L"[Camera Position]\nX:" +
-        std::to_wstring(camera->GetPosition().m128_f32[0]) + L"\n" +
-        L"Y:" + std::to_wstring(camera->GetPosition().m128_f32[1]) + L"\n" +
-        L"Z:" + std::to_wstring(camera->GetPosition().m128_f32[2]) + L"\n";
-    cameraRotationText = L"[Camera Rotation]\nX:" +
-        std::to_wstring(camera->GetDegressRotation().m128_f32[0]) + L"\n" +
-        L"Y:" + std::to_wstring(camera->GetDegressRotation().m128_f32[1]) + L"\n" +
-        L"Z:" + std::to_wstring(camera->GetDegressRotation().m128_f32[2]) + L"\n";
+    cameraInfoStr = camera->GetTransform().GetInfoToWString(3);
 
     elapsedTime;
 }
@@ -304,40 +302,24 @@ void Game::Render()
 
     //  CameraPosition用の背景色を作成
     ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
-    D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.5f);
+    D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.8f);
     d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
-
-    //  CameraRotation用の背景色を作成
-    ComPtr<ID2D1SolidColorBrush> rotationBackColorBrush;
-    D2D1_COLOR_F rotationBackColor = D2D1::ColorF(D2D1::ColorF::Gray, 0.5f);
-    d2dRenderTarget->CreateSolidColorBrush(rotationBackColor, &rotationBackColorBrush);
 
     // 描画開始
     d2dRenderTarget->BeginDraw();
 
     //  表示用領域を定義
-    D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 200, 130);
-    D2D_RECT_F rotationInfoRect = D2D1::RectF(20, 140, 200, 250);
+    D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 330, 100);
 
     //  カメラ位置情報を描画
     //  背景を描画
     d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
     //  テキストを描画
     d2dRenderTarget->DrawText(
-        cameraPositionText.c_str(),         // 描画するテキスト
-        static_cast<UINT32>(cameraPositionText.length()), // テキストの長さ
+        cameraInfoStr.c_str(),         // 描画するテキスト
+        static_cast<UINT32>(cameraInfoStr.length()), // テキストの長さ
         textFormat.Get(),           // テキストフォーマット
         positionInfoRect,               // 描画する領域
-        textColorBrush.Get());            // ブラシ
-
-    //  背景を描画
-    d2dRenderTarget->FillRectangle(rotationInfoRect, rotationBackColorBrush.Get());
-    //  テキストを描画
-    d2dRenderTarget->DrawText(
-        cameraRotationText.c_str(),         // 描画するテキスト
-        static_cast<UINT32>(cameraRotationText.length()), // テキストの長さ
-        textFormat.Get(),           // テキストフォーマット
-        rotationInfoRect,           // 描画する領域
         textColorBrush.Get());            // ブラシ
 
     // 描画終了
