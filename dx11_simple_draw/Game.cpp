@@ -16,6 +16,7 @@
 #include<wingdi.h>
 #include<d2d1.h>
 #include<dwrite.h>
+#include "Model.h"
 
 extern void ExitGame() noexcept;
 
@@ -23,61 +24,27 @@ using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
-struct Vertex {
-    XMFLOAT3 position;
-    XMFLOAT3 normal;
-};
-
 struct ConstantBuffer {
     XMFLOAT4X4 world;
     XMFLOAT4X4 view;
     XMFLOAT4X4 projection;
 };
 
-struct Model {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned short> indices;
-};
+Model* model;
+//  ワールド座標行列
+DirectX::XMMATRIX modelWorldMatrix;
 
-Model CreateRegularPolygon(int n) {
-    Model model;
-    if (n < 3) {
-        // エラーチェック：3未満の頂点数は正多角形を形成できません
-        return model;
-    }
-
-    float radius = 1.f;
-
-    for (int i = 0; i < n; i++) {
-        float angle = XM_2PI * i / n;
-        float x = radius * cosf(angle);
-        float y = radius * sinf(angle);
-        model.vertices.push_back({ XMFLOAT3(x, y, 0.0f) });
-    }
-
-    //  時計回りで頂点を結ぶ
-    for (int i = 1; i < n - 1; i++) {
-        model.indices.push_back(0);
-        model.indices.push_back(i + 1);
-        model.indices.push_back(i);
-    }
-
-    return model;
-}
-
-Model model;
+Model* model1;
+//  ワールド座標行列
+DirectX::XMMATRIX model1WorldMatrix;
 
 Camera* camera;
-
-ID3D11Buffer* vertexBuffer = nullptr;
-ID3D11Buffer* indexBuffer = nullptr;
 
 ID3D11VertexShader* verteShader = nullptr;
 ID3D11PixelShader* pixelShader = nullptr;
 ID3D11InputLayout* inputLayout = nullptr;
 
 ID3D11Buffer* constantBuffer = nullptr;
-
 
 ComPtr<IDWriteTextFormat> textFormat;
 ComPtr<ID2D1Factory> d2dFactory;
@@ -114,7 +81,8 @@ void Game::Initialize(HWND window, int width, int height)
     */
 
     //  ワールド座標を設定する
-    m_world = XMMatrixTranslation(0.0f, -1.5f, 5.0f);
+    modelWorldMatrix = XMMatrixTranslation(0.f, -1.5f, 5.f);
+    model1WorldMatrix = XMMatrixTranslation(2.f, 0.f, 5.f);
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 
@@ -153,9 +121,6 @@ void Game::Initialize(HWND window, int width, int height)
 // Executes the basic game loop.
 void Game::Tick()
 {
-struct Vertex {
-    XMFLOAT3 position;
-};
     m_timer.Tick([&]()
     {
         Update(m_timer);
@@ -255,24 +220,41 @@ void Game::Render()
     context->PSSetShader(pixelShader,nullptr,0);
     context->IASetInputLayout(inputLayout);
 
+
     //  コンスタントバッファを設定する
     ConstantBuffer cb;
     //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
-    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(m_world));
+    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(modelWorldMatrix));
     XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
     XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
     context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
 
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
-    context->IASetVertexBuffers(0,1,&vertexBuffer,&stride,&offset);
-    context->IASetIndexBuffer(indexBuffer,DXGI_FORMAT_R16_UINT,0);
-    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
     //  定数バッファを設定する
     context->VSSetConstantBuffers(0,1,&constantBuffer);
 
-    context->DrawIndexed(model.indices.size(), 0, 0);
+    //  とりあえず受け取る
+    UINT stride = sizeof(Vertex);
+    UINT offset = 0;
+    
+    context->IASetVertexBuffers(0,1, model->vertexBuffer.GetAddressOf(), &stride, &offset);
+    context->IASetIndexBuffer(model->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->DrawIndexed(model->IndiceCount, 0, 0);
+
+    //  コンスタントバッファを設定する
+    //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
+    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(model1WorldMatrix));
+    XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
+    XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
+    context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
+
+    //  定数バッファを設定する
+    context->VSSetConstantBuffers(0,1,&constantBuffer);
+    
+    context->IASetVertexBuffers(0,1, model1->vertexBuffer.GetAddressOf(), &stride, &offset);
+    context->IASetIndexBuffer(model1->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    context->DrawIndexed(model1->IndiceCount, 0, 0);
     
     context;
 
@@ -411,44 +393,6 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
 #pragma endregion
 
 /// <summary>
-/// 頂点情報を作成する
-/// </summary>
-void CreateVertexBuffer(ID3D11Device* device,Model& model,ID3D11Buffer** createdBuffer){
-
-    D3D11_BUFFER_DESC vertexBufferDesc = {
-        static_cast<UINT>(model.vertices.size() * sizeof(Vertex)),
-        D3D11_USAGE_DEFAULT,
-        D3D11_BIND_VERTEX_BUFFER,
-        0, 0, 0
-    };
-
-    D3D11_SUBRESOURCE_DATA vertexSubresourceData = {
-        model.vertices.data(), // 修正: 実際のデータへのポインタ
-        0, 0
-    };
-
-    //   頂点バッファを生成する
-    device->CreateBuffer(&vertexBufferDesc,&vertexSubresourceData,createdBuffer);
-}
-
-void CreateIndexBuffer(ID3D11Device* device,Model& model,ID3D11Buffer** createdBuffer) {
-
-    D3D11_BUFFER_DESC indexBufferDesc = {
-        static_cast<UINT>(model.indices.size() * sizeof(unsigned short)),
-        D3D11_USAGE_DEFAULT,
-        D3D11_BIND_INDEX_BUFFER,
-        0,0,0
-    };
-
-    D3D11_SUBRESOURCE_DATA indexSubresourceData = {
-        model.indices.data(),
-        0,0
-    };
-
-    device->CreateBuffer(&indexBufferDesc, &indexSubresourceData, createdBuffer);
-}
-
-/// <summary>
 /// 頂点シェーダを生成
 /// </summary>
 ComPtr<ID3DBlob> CreateVertexShader(ID3D11Device* device, ID3D11VertexShader** createdShader) {
@@ -507,18 +451,11 @@ void CreateConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
     HRESULT result = device->CreateBuffer(&constantBufferDesc, nullptr, createdBuffer);
 }
 
-#pragma region Direct3D Resources
-// These are the resources that depend on the device.
-void Game::CreateDeviceDependentResources()
-{
-    auto device = m_deviceResources->GetD3DDevice();
-
-    //  モデルの情報を生成
-    //model = CreateRegularPolygon(5);
+void LoadModel(Model& distModel,string modelPath) {
     //  モデルの読み込み
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
-        "Models/teapot.obj",
+        modelPath,
         aiProcess_Triangulate |
         aiProcess_JoinIdenticalVertices |
         aiProcess_GenNormals  // 法線情報の計算を追加
@@ -541,23 +478,34 @@ void Game::CreateDeviceDependentResources()
             aiVector3D normal = mesh->mNormals[i];
             vertex.position = DirectX::XMFLOAT3(pos.x, pos.y, pos.z);
             vertex.normal = DirectX::XMFLOAT3(normal.x, normal.y, normal.z);
-            model.vertices.push_back(vertex);
+            distModel.vertices.push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                model.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
+                distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
     }
+}
 
-    //  頂点情報を作成して、GPUに転送する
-    CreateVertexBuffer(device, model, &vertexBuffer);
+#pragma region Direct3D Resources
+// These are the resources that depend on the device.
+void Game::CreateDeviceDependentResources()
+{
+    auto device = m_deviceResources->GetD3DDevice();
 
-    //  インデックス情報を作成して、GPUに転送する
-    CreateIndexBuffer(device, model, &indexBuffer);
+    model = new Model();
+    model1 = new Model();
+
+    //  モデルの読み込み
+    LoadModel(*model,"Models/teapot.obj");
+    LoadModel(*model1,"Models/skull.obj");
+    //  モデルのバッファを生成
+    model->CreateBuffers(*device);
+    model1->CreateBuffers(*device);
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
@@ -601,8 +549,6 @@ void Game::CreateWindowSizeDependentResources()
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
-    vertexBuffer->Release();
-    indexBuffer->Release();
     verteShader->Release();
     pixelShader->Release();
     inputLayout->Release();
