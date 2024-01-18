@@ -5,7 +5,7 @@ Transform::Transform() {
     m_position = XMVECTOR();
     m_degressRotation = XMVECTOR();
     m_radianRotation = XMVECTOR();
-    m_scale = XMVECTOR();
+    m_scale = XMVectorSet(1.f, 1.f, 1.f, 1.f);
 }
 
 Transform::Transform(XMVECTOR position, XMVECTOR degressRotation, XMVECTOR scale) {
@@ -34,6 +34,20 @@ XMMATRIX Transform::GetWorldRotationMatrix() {
     XMMATRIX rotationMatrix = rollMatrix * pitchMatrix * yawMatrix;
 
     return rotationMatrix;
+}
+
+
+XMMATRIX Transform::GetWorldMatrix() {
+    XMMATRIX retMatrix = XMMatrixIdentity();
+
+    //  回転行列を適応
+    retMatrix *= GetWorldRotationMatrix();
+    //  位置行列を適応
+    retMatrix *= XMMatrixTranslation(XMVectorGetX(m_position), XMVectorGetY(m_position), XMVectorGetZ(m_position));
+    //  スケール行列を適応
+    retMatrix *= XMMatrixScaling(XMVectorGetX(m_scale), XMVectorGetY(m_scale), XMVectorGetZ(m_scale));
+
+    return retMatrix;
 }
 
 //  Setter
