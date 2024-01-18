@@ -20,6 +20,8 @@
     </ClInclude>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="Model.h" />
+    <ClInclude Include="ModelManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\pch.cpp" />
@@ -30,6 +32,8 @@
     </ClCompile>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="ModelManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Assets\resource.rc" />

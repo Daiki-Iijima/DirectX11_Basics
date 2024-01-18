@@ -1,11 +1,16 @@
 #include "Common/pch.h"
 #include "Model.h"
 
-Model::Model() {
+Model::Model():IndiceCount(0) {
     vertices = std::vector<Vertex>();
     indices = std::vector<unsigned short>();
     vertexBuffer = nullptr;
     indexBuffer = nullptr;
+    m_transform = Transform();
+}
+
+Model::Model(Transform transform) :Model() {
+    this->m_transform = transform;
 }
 
 HRESULT Model::CreateBuffers(ID3D11Device& device) {

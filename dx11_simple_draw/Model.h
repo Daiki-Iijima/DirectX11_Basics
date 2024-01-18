@@ -1,6 +1,7 @@
 #pragma once
 
 #include <DirectXMath.h>
+#include "Transform.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
@@ -14,6 +15,7 @@ class Model
 {
 public:
     Model();
+    Model(Transform transform);
 
     //  インデックスバッファの数
     int IndiceCount;
@@ -30,8 +32,15 @@ public:
     //  Bufferの生成
     HRESULT CreateBuffers(ID3D11Device& device);
 
+    //  Getter
+    Transform& GetTransform() {
+        return m_transform;
+    }
+
 private:
     //  Bufferの生成
     HRESULT CreateVertexBuffer(ID3D11Device& device);
     HRESULT CreateIndexBuffer(ID3D11Device& device);
+
+    Transform m_transform;
 };

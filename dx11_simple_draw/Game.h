@@ -11,6 +11,19 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#pragma comment(lib,"d3dcompiler.lib")
+#include <d3dcompiler.h>
+#include <iostream>
+
+#pragma comment(lib,"d2d1.lib")
+#pragma comment(lib,"dwrite.lib")
+#include<shtypes.h>
+#include<wingdi.h>
+#include<d2d1.h>
+#include<dwrite.h>
+#include "Camera.h"
+#include "ModelManager.h"
+#include "Model.h"
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.

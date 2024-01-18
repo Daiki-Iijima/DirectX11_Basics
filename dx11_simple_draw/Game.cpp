@@ -5,45 +5,17 @@
 #include "Common/pch.h"
 #include "Game.h"
 
-#pragma comment(lib,"d3dcompiler.lib")
-#include <d3dcompiler.h>
-#include <iostream>
-#include <Camera.h>
-
-#pragma comment(lib,"d2d1.lib")
-#pragma comment(lib,"dwrite.lib")
-#include<shtypes.h>
-#include<wingdi.h>
-#include<d2d1.h>
-#include<dwrite.h>
-#include "Model.h"
-
 extern void ExitGame() noexcept;
 
 using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
-struct ConstantBuffer {
-    XMFLOAT4X4 world;
-    XMFLOAT4X4 view;
-    XMFLOAT4X4 projection;
-};
-
-Model* model;
-//  ワールド座標行列
-DirectX::XMMATRIX modelWorldMatrix;
-
-Model* model1;
-//  ワールド座標行列
-DirectX::XMMATRIX model1WorldMatrix;
-
 Camera* camera;
 
 ID3D11VertexShader* verteShader = nullptr;
 ID3D11PixelShader* pixelShader = nullptr;
 ID3D11InputLayout* inputLayout = nullptr;
-
 ID3D11Buffer* constantBuffer = nullptr;
 
 ComPtr<IDWriteTextFormat> textFormat;
@@ -51,6 +23,8 @@ ComPtr<ID2D1Factory> d2dFactory;
 
 //  描画するテキスト
 std::wstring cameraInfoStr;
+
+ModelManager* modelManager;
 
 Game::Game() noexcept(false)
 {
@@ -80,9 +54,6 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
 
-    //  ワールド座標を設定する
-    modelWorldMatrix = XMMatrixTranslation(0.f, -1.5f, 5.f);
-    model1WorldMatrix = XMMatrixTranslation(2.f, 0.f, 5.f);
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 
@@ -219,42 +190,17 @@ void Game::Render()
     context->VSSetShader(verteShader,nullptr,0);
     context->PSSetShader(pixelShader,nullptr,0);
     context->IASetInputLayout(inputLayout);
-
+    //  定数バッファを設定する
+    context->VSSetConstantBuffers(0,1,&constantBuffer);
 
     //  コンスタントバッファを設定する
+    //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
+    //  先にカメラ情報を設定
     ConstantBuffer cb;
-    //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
-    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(modelWorldMatrix));
     XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
     XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
-    context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
 
-    //  定数バッファを設定する
-    context->VSSetConstantBuffers(0,1,&constantBuffer);
-
-    //  とりあえず受け取る
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
-    
-    context->IASetVertexBuffers(0,1, model->vertexBuffer.GetAddressOf(), &stride, &offset);
-    context->IASetIndexBuffer(model->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context->DrawIndexed(model->IndiceCount, 0, 0);
-
-    //  コンスタントバッファを設定する
-    //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
-    XMStoreFloat4x4(&cb.world, XMMatrixTranspose(model1WorldMatrix));
-    XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
-    XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
-    context->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
-
-    //  定数バッファを設定する
-    context->VSSetConstantBuffers(0,1,&constantBuffer);
-    
-    context->IASetVertexBuffers(0,1, model1->vertexBuffer.GetAddressOf(), &stride, &offset);
-    context->IASetIndexBuffer(model1->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    context->DrawIndexed(model1->IndiceCount, 0, 0);
+    modelManager->DrawAll(*context, cb, *constantBuffer);
     
     context;
 
@@ -451,61 +397,19 @@ void CreateConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
     HRESULT result = device->CreateBuffer(&constantBufferDesc, nullptr, createdBuffer);
 }
 
-void LoadModel(Model& distModel,string modelPath) {
-    //  モデルの読み込み
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(
-        modelPath,
-        aiProcess_Triangulate |
-        aiProcess_JoinIdenticalVertices |
-        aiProcess_GenNormals  // 法線情報の計算を追加
-    );
-
-    if (!scene) {
-        // エラーハンドリング
-        std::string errorStr = "ERROR: " + std::string(importer.GetErrorString()) + "\n";
-        std::wstring errorWStr = std::wstring(errorStr.begin(), errorStr.end());
-        OutputDebugString(errorWStr.c_str());
-    }
-
-    for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
-        aiMesh* mesh = scene->mMeshes[m];
-
-        // 頂点情報の抽出
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-            Vertex vertex;
-            aiVector3D pos = mesh->mVertices[i];
-            aiVector3D normal = mesh->mNormals[i];
-            vertex.position = DirectX::XMFLOAT3(pos.x, pos.y, pos.z);
-            vertex.normal = DirectX::XMFLOAT3(normal.x, normal.y, normal.z);
-            distModel.vertices.push_back(vertex);
-        }
-
-        // インデックス情報の抽出
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-            aiFace face = mesh->mFaces[i];
-            for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
-            }
-        }
-    }
-}
-
 #pragma region Direct3D Resources
 // These are the resources that depend on the device.
 void Game::CreateDeviceDependentResources()
 {
     auto device = m_deviceResources->GetD3DDevice();
 
-    model = new Model();
-    model1 = new Model();
-
-    //  モデルの読み込み
-    LoadModel(*model,"Models/teapot.obj");
-    LoadModel(*model1,"Models/skull.obj");
-    //  モデルのバッファを生成
-    model->CreateBuffers(*device);
-    model1->CreateBuffers(*device);
+    modelManager = new ModelManager(*device);
+    modelManager->AddModel("Models/teapot.obj");
+    Model* skull1 = modelManager->AddModel("Models/skull.obj");
+    skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
+    skull1->GetTransform().SetDegressRotation(90.0f,0,0);
+    Model* skull2 = modelManager->AddModel("Models/skull.obj");
+    skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
