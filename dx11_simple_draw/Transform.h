@@ -25,6 +25,7 @@ public :
     XMMATRIX GetWorldRotationMatrix();
     //  ˆÊ’u
     XMVECTOR GetPosition() const;
+    XMMATRIX GetWorldMatrix();
     //  Šp“x
     XMVECTOR GetDegressRotation() const;
     XMVECTOR GetRadianRotation() const;
