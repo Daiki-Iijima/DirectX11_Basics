@@ -1,6 +1,9 @@
 #include "Common/pch.h"
 #include "ModelManager.h"
 
+#pragma comment(lib, "DirectXTex.lib")
+#include <DirectXTex.h>
+
 using namespace DirectX;
 
 void ModelManager::LoadModel(Model& distModel, string modelPath) {
@@ -19,6 +22,7 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
         std::wstring errorWStr = std::wstring(errorStr.begin(), errorStr.end());
         OutputDebugString(errorWStr.c_str());
     }
+
 
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
@@ -40,13 +44,48 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
                 distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
+
+        //  マテリアル情報の抽出
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+        for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
+            aiString str;
+            material->GetTexture(aiTextureType_DIFFUSE, i, &str);
+            //  テクスチャの読み込み
+            //  パスを出力してみる
+            std::wstring path(str.C_Str(), str.C_Str() + str.length);
+            OutputDebugString(std::wstring(path.begin(), path.end()).c_str());
+
+            //  読み込んだテクスチャ情報
+            ID3D11ShaderResourceView* textureView = nullptr;
+
+            //  テクスチャの生成
+            CreateTextureFromPath(m_device,m_deviceContext,path,&textureView);
+
+            //  モデルクラスに保存
+            distModel.SetTexture(textureView);
+        }
     }
 }
 
-ModelManager::ModelManager(ID3D11Device1& device)
+
+HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context, const std::wstring& path, ID3D11ShaderResourceView** textureView) {
+    DirectX::ScratchImage scratchImage;
+    HRESULT hr = DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, scratchImage);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    hr = DirectX::CreateShaderResourceView(device, scratchImage.GetImages(), scratchImage.GetImageCount(), scratchImage.GetMetadata(), textureView);
+    return hr;
+}
+
+ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceContext)
 {
     m_models = std::vector<Model*>();
+
     m_device = &device;
+    m_deviceContext = &deviceContext;
 }
 
 Model* ModelManager::AddModel(string path)

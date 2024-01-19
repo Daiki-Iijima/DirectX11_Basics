@@ -37,10 +37,18 @@ public:
         return m_transform;
     }
 
+    //  Setter
+    void SetTexture(ID3D11ShaderResourceView* textureView) {
+        m_textureView = textureView;
+    }
+
 private:
     //  Bufferの生成
     HRESULT CreateVertexBuffer(ID3D11Device& device);
     HRESULT CreateIndexBuffer(ID3D11Device& device);
 
     Transform m_transform;
+
+    //  テクスチャ
+    ID3D11ShaderResourceView* m_textureView;
 };

@@ -33,7 +33,6 @@ Game::Game() noexcept(false)
     //   Add DX::DeviceResources::c_AllowTearing to opt-in to variable rate displays.
     //   Add DX::DeviceResources::c_EnableHDR for HDR10 display.
     m_deviceResources->RegisterDeviceNotify(this);
-
 }
 
 // Initialize the Direct3D resources required to run.
@@ -404,12 +403,13 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device);
-    modelManager->AddModel("Models/teapot.obj");
-    Model* skull1 = modelManager->AddModel("Models/skull.obj");
-    skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
-    skull1->GetTransform().SetDegressRotation(90.0f,0,0);
-    Model* skull2 = modelManager->AddModel("Models/skull.obj");
-    skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
+    modelManager->AddModel("Models/Cube/Cube.obj");
+    //modelManager->AddModel("Models/teapot.obj");
+    //Model* skull1 = modelManager->AddModel("Moels/skull.obj");
+    //skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
+    //skull1->GetTransform().SetDegressRotation(90.0f,0,0);
+    //Model* skull2 = modelManager->AddModel("Models/skull.obj");
+    //skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
