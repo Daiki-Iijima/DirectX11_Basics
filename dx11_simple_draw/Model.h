@@ -9,6 +9,7 @@ using Microsoft::WRL::ComPtr;
 struct Vertex {
     XMFLOAT3 position;
     XMFLOAT3 normal;
+    XMFLOAT2 texcoord;
 };
 
 class Model
@@ -42,6 +43,11 @@ public:
         m_textureView = textureView;
     }
 
+    //  Getter
+    ID3D11ShaderResourceView* GetTexture()  {
+        return m_textureView.Get();
+    }
+
 private:
     //  Bufferの生成
     HRESULT CreateVertexBuffer(ID3D11Device& device);
@@ -50,5 +56,5 @@ private:
     Transform m_transform;
 
     //  テクスチャ
-    ID3D11ShaderResourceView* m_textureView;
+    ComPtr<ID3D11ShaderResourceView> m_textureView;
 };
