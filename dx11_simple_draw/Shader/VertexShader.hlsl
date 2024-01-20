@@ -9,9 +9,10 @@ struct VertexShaderOutput
 {
     float4 pos : SV_POSITION;
     float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD0;
 };
 
-VertexShaderOutput main(float4 pos : POSITION,float3 normal : NORMAL)
+VertexShaderOutput main(float4 pos : POSITION,float3 normal : NORMAL,float2 texCoord : TEXCOORD0)
 {
     VertexShaderOutput output;
 
@@ -22,6 +23,9 @@ VertexShaderOutput main(float4 pos : POSITION,float3 normal : NORMAL)
 
     //  法線をワールド座標系に変換
     output.normal = mul(normal, (float3x3)World);
+
+    //  テクスチャ座標をそのままピクセルシェーダーに渡す
+    output.texCoord = texCoord;
 
     return output;
 }

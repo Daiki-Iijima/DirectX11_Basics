@@ -11,7 +11,7 @@ struct ConstantBuffer {
 class ModelManager
 {
 public:
-    ModelManager(ID3D11Device1& device);
+    ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
     Model* AddModel(string path);
@@ -48,4 +48,5 @@ private:
 
     //  デバイス
     ID3D11Device1* m_device;
+    ID3D11DeviceContext* m_deviceContext;
 };

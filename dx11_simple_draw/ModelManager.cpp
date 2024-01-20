@@ -1,7 +1,21 @@
 #include "Common/pch.h"
 #include "ModelManager.h"
 
+#pragma comment(lib, "DirectXTex.lib")
+#include <DirectXTex.h>
+
 using namespace DirectX;
+
+HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context, const std::wstring& path, ID3D11ShaderResourceView** textureView) {
+    DirectX::ScratchImage scratchImage;
+    HRESULT hr = DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, scratchImage);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    hr = DirectX::CreateShaderResourceView(device, scratchImage.GetImages(), scratchImage.GetImageCount(), scratchImage.GetMetadata(), textureView);
+    return hr;
+}
 
 void ModelManager::LoadModel(Model& distModel, string modelPath) {
     //  モデルの読み込み
@@ -20,6 +34,7 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
         OutputDebugString(errorWStr.c_str());
     }
 
+
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
 
@@ -30,6 +45,17 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
             aiVector3D normal = mesh->mNormals[i];
             vertex.position = DirectX::XMFLOAT3(pos.x, pos.y, pos.z);
             vertex.normal = DirectX::XMFLOAT3(normal.x, normal.y, normal.z);
+
+            //  テクスチャ座標の取得
+            if (mesh->HasTextureCoords(0)) {
+                aiVector3D texcoord = mesh->mTextureCoords[0][i];
+                vertex.texcoord = DirectX::XMFLOAT2(texcoord.x, texcoord.y);
+            }
+            else {
+                //  テクスチャ座標がない場合は0で埋める
+                vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
+            }
+
             distModel.vertices.push_back(vertex);
         }
 
@@ -40,13 +66,40 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
                 distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
+
+        //  マテリアル情報の抽出
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+        for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
+            aiString str;
+            material->GetTexture(aiTextureType_DIFFUSE, i, &str);
+            //  テクスチャの読み込み
+            //  パスを出力してみる
+            std::wstring path(str.C_Str(), str.C_Str() + str.length);
+            OutputDebugString(std::wstring(path.begin(), path.end()).c_str());
+
+            //  読み込んだテクスチャ情報
+            ID3D11ShaderResourceView* textureView = nullptr;
+
+            //  パスを正式なパスに変換
+            path = L"Models/Cube/" + path;
+
+            //  テクスチャの生成
+            CreateTextureFromPath(m_device,m_deviceContext,path,&textureView);
+
+            //  モデルクラスに保存
+            distModel.SetTexture(textureView);
+        }
     }
 }
 
-ModelManager::ModelManager(ID3D11Device1& device)
+
+ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceContext)
 {
     m_models = std::vector<Model*>();
+
     m_device = &device;
+    m_deviceContext = &deviceContext;
 }
 
 Model* ModelManager::AddModel(string path)
@@ -88,6 +141,13 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
+    DirectX::XMVECTOR rot = model->GetTransform().GetDegressRotation();
+    float y = XMVectorGetY(rot);
+    float x = XMVectorGetX(rot);
+    y += 1.f;
+    x += 1.f;
+    model->GetTransform().SetDegressRotation(x,y,0);
+
     XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
     deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
 
@@ -98,6 +158,14 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
     deviceContext.IASetVertexBuffers(0, 1, model->vertexBuffer.GetAddressOf(), &stride, &offset);
     deviceContext.IASetIndexBuffer(model->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
     deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    //  テクスチャの設定
+    if (model->GetTexture() != nullptr) {
+        ID3D11ShaderResourceView* textureView = model->GetTexture();
+        ID3D11ShaderResourceView* views[] = { textureView };
+        deviceContext.PSSetShaderResources(0, 1, views);
+    }
+
     deviceContext.DrawIndexed(model->IndiceCount, 0, 0);
 }
 

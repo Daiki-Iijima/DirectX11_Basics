@@ -33,7 +33,6 @@ Game::Game() noexcept(false)
     //   Add DX::DeviceResources::c_AllowTearing to opt-in to variable rate displays.
     //   Add DX::DeviceResources::c_EnableHDR for HDR10 display.
     m_deviceResources->RegisterDeviceNotify(this);
-
 }
 
 // Initialize the Direct3D resources required to run.
@@ -374,7 +373,8 @@ void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLa
     //  頂点インプットレイアウトを生成
     std::vector<D3D11_INPUT_ELEMENT_DESC> layout = {
         { "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0 },
-        { "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0}
+        { "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA,0},
+        { "TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,24,D3D11_INPUT_PER_VERTEX_DATA,0}
     };
 
     //  頂点インプットレイアウトを生成する
@@ -403,13 +403,14 @@ void Game::CreateDeviceDependentResources()
 {
     auto device = m_deviceResources->GetD3DDevice();
 
-    modelManager = new ModelManager(*device);
-    modelManager->AddModel("Models/teapot.obj");
-    Model* skull1 = modelManager->AddModel("Models/skull.obj");
-    skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
-    skull1->GetTransform().SetDegressRotation(90.0f,0,0);
-    Model* skull2 = modelManager->AddModel("Models/skull.obj");
-    skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
+    modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
+    modelManager->AddModel("Models/Cube/Cube.obj");
+    //modelManager->AddModel("Models/teapot.obj");
+    //Model* skull1 = modelManager->AddModel("Moels/skull.obj");
+    //skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
+    //skull1->GetTransform().SetDegressRotation(90.0f,0,0);
+    //Model* skull2 = modelManager->AddModel("Models/skull.obj");
+    //skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);

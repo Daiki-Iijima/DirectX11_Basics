@@ -26,6 +26,7 @@ HRESULT Model::CreateBuffers(ID3D11Device& device) {
         return hr;
     }
 
+
     return hr;
 }
 
