@@ -180,6 +180,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="HitDetection\BaseHitDetection.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\DeviceResources.h" />
     <ClInclude Include="Game.h" />
@@ -187,9 +188,11 @@
     <ClInclude Include="Common\StepTimer.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="ModelManager.h" />
+    <ClInclude Include="HitDetection\SphereHitDetection.h" />
     <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="HitDetection\BaseHitDetection.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Common\DeviceResources.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -202,6 +205,7 @@
     </ClCompile>
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModelManager.cpp" />
+    <ClCompile Include="HitDetection\SphereHitDetection.cpp" />
     <ClCompile Include="Transform.cpp" />
   </ItemGroup>
   <ItemGroup>

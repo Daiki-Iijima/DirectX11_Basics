@@ -2,6 +2,7 @@
 
 #include <DirectXMath.h>
 #include "Transform.h"
+#include "HitDetection/BaseHitDetection.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
@@ -16,7 +17,7 @@ class Model
 {
 public:
     Model();
-    Model(Transform transform);
+    Model(Transform transform,BaseHitDetection* hitDetection);
 
     //  インデックスバッファの数
     int IndiceCount;
@@ -38,14 +39,23 @@ public:
         return m_transform;
     }
 
+    ID3D11ShaderResourceView* GetTexture()  {
+        return m_textureView.Get();
+    }
+
+    BaseHitDetection* GetHitDetection() {
+        return m_hitDetection;
+    }
+
+    XMVECTOR GetCenter();
+
     //  Setter
     void SetTexture(ID3D11ShaderResourceView* textureView) {
         m_textureView = textureView;
     }
 
-    //  Getter
-    ID3D11ShaderResourceView* GetTexture()  {
-        return m_textureView.Get();
+    void SetHitDetection(BaseHitDetection* hitDetection) {
+        m_hitDetection = hitDetection;
     }
 
 private:
@@ -57,4 +67,7 @@ private:
 
     //  テクスチャ
     ComPtr<ID3D11ShaderResourceView> m_textureView;
+
+    //  当たり判定
+    BaseHitDetection* m_hitDetection;
 };

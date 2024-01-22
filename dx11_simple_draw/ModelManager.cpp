@@ -3,6 +3,7 @@
 
 #pragma comment(lib, "DirectXTex.lib")
 #include <DirectXTex.h>
+#include "HitDetection/SphereHitDetection.h"
 
 using namespace DirectX;
 
@@ -15,6 +16,29 @@ HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context
 
     hr = DirectX::CreateShaderResourceView(device, scratchImage.GetImages(), scratchImage.GetImageCount(), scratchImage.GetMetadata(), textureView);
     return hr;
+}
+
+void CreateWhiteTexture(ID3D11Device* device, ID3D11ShaderResourceView** textureView) {
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    texDesc.Width = 1;
+    texDesc.Height = 1;
+    texDesc.MipLevels = 1;
+    texDesc.ArraySize = 1;
+    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.Usage = D3D11_USAGE_DEFAULT;
+    texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA initData = {};
+    unsigned int white = 0xffffffff; // RGBAで白色
+    initData.pSysMem = &white;
+    initData.SysMemPitch = sizeof(unsigned int);
+
+    ID3D11Texture2D* whiteTex = nullptr;
+    device->CreateTexture2D(&texDesc, &initData, &whiteTex);
+
+    device->CreateShaderResourceView(whiteTex, nullptr, textureView);
+    whiteTex->Release();
 }
 
 void ModelManager::LoadModel(Model& distModel, string modelPath) {
@@ -90,6 +114,13 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
             //  モデルクラスに保存
             distModel.SetTexture(textureView);
         }
+
+        if (distModel.GetTexture() == nullptr) {
+            //  テクスチャがない場合は白色のテクスチャを生成
+            ID3D11ShaderResourceView* textureView = nullptr;
+            CreateWhiteTexture(m_device, &textureView);
+            distModel.SetTexture(textureView);
+        }
     }
 }
 
@@ -106,8 +137,35 @@ Model* ModelManager::AddModel(string path)
 {
     Model* model = new Model();
     LoadModel(*model, path);
+    //  当たり判定の生成
+    SphereHitDetection* hitDetection = new SphereHitDetection(model);
+    // 当たり判定開始時のコールバックを設定
+    hitDetection->SetOnHitStart([](BaseHitDetection* other) {
+    OutputDebugStringW(L"当たり判定開始\n");
+        });
+
+    // 当たり判定持続中のコールバックを設定
+    hitDetection->SetOnHitStay([](BaseHitDetection* other) {
+        });
+
+    // 当たり判定終了時のコールバックを設定
+    hitDetection->SetOnHitExit([](BaseHitDetection* other) {
+    OutputDebugStringW(L"当たり判定終了\n");
+        });
+
+    model->SetHitDetection(hitDetection);
     model->CreateBuffers(*m_device);
     m_models.push_back(model);
+
+    //  当たり判定を持っているオブジェクトの当たり判定を収集
+    m_hitDetections = std::vector<BaseHitDetection*>();
+    for (Model* model : m_models) {
+        BaseHitDetection* hitDetection = model->GetHitDetection();
+        if (hitDetection != nullptr) {
+            m_hitDetections.push_back(hitDetection);
+        }
+    }
+
     return model;
 }
 
@@ -141,13 +199,6 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
-    DirectX::XMVECTOR rot = model->GetTransform().GetDegressRotation();
-    float y = XMVectorGetY(rot);
-    float x = XMVectorGetX(rot);
-    y += 1.f;
-    x += 1.f;
-    model->GetTransform().SetDegressRotation(x,y,0);
-
     XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
     deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
 
@@ -171,8 +222,25 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
 
 void ModelManager::UpdateAll()
 {
+    int i = 0;
+    for (Model* model : m_models) {
+        Update(i);
+        i++;
+    }
 }
 
 void ModelManager::Update(int index)
 {
+    Model* model = m_models[index];
+    BaseHitDetection* hitDitection = model->GetHitDetection();
+    if (hitDitection != nullptr && m_hitDetections.size() >= 2) {
+        hitDitection->HitCheck(m_hitDetections);
+    }
+
+    //DirectX::XMVECTOR rot = model->GetTransform().GetDegressRotation();
+    //float y = XMVectorGetY(rot);
+    //float x = XMVectorGetX(rot);
+    //y += 1.f;
+    //x += 1.f;
+    //model->GetTransform().SetDegressRotation(x,y,0);
 }

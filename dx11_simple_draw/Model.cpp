@@ -7,10 +7,29 @@ Model::Model():IndiceCount(0) {
     vertexBuffer = nullptr;
     indexBuffer = nullptr;
     m_transform = Transform();
+    m_hitDetection = nullptr;
 }
 
-Model::Model(Transform transform) :Model() {
+Model::Model(Transform transform,BaseHitDetection* hitDetection) :Model() {
+    m_hitDetection = hitDetection;
     this->m_transform = transform;
+}
+
+
+XMVECTOR Model::GetCenter() {
+    XMFLOAT3 center = XMFLOAT3(0, 0, 0);
+
+    for (Vertex vertex : vertices) {
+        center.x += vertex.position.x;
+        center.y += vertex.position.y;
+        center.z += vertex.position.z;
+    }
+
+    center.x /= vertices.size();
+    center.y /= vertices.size();
+    center.z /= vertices.size();
+
+    return XMVectorSet(center.x, center.y, center.z, 0);
 }
 
 HRESULT Model::CreateBuffers(ID3D11Device& device) {
@@ -25,7 +44,6 @@ HRESULT Model::CreateBuffers(ID3D11Device& device) {
     if (FAILED(hr)) {
         return hr;
     }
-
 
     return hr;
 }
@@ -51,7 +69,7 @@ HRESULT Model::CreateVertexBuffer(ID3D11Device& device) {
 
     if (hr == S_OK) {
         OutputDebugString(L"頂点バッファの生成に成功しました。\n");
-        vertices.clear();
+        //vertices.clear();
     }
 
     return hr;
