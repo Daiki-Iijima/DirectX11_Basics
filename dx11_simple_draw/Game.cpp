@@ -17,6 +17,7 @@ ID3D11VertexShader* verteShader = nullptr;
 ID3D11PixelShader* pixelShader = nullptr;
 ID3D11InputLayout* inputLayout = nullptr;
 ID3D11Buffer* constantBuffer = nullptr;
+ID3D11SamplerState* samplerState = nullptr;
 
 ComPtr<IDWriteTextFormat> textFormat;
 ComPtr<ID2D1Factory> d2dFactory;
@@ -25,6 +26,8 @@ ComPtr<ID2D1Factory> d2dFactory;
 std::wstring cameraInfoStr;
 
 ModelManager* modelManager;
+
+Model* cube1;
 
 Game::Game() noexcept(false)
 {
@@ -165,6 +168,18 @@ void Game::Update(DX::StepTimer const& timer)
     //  カメラの更新した座標をテキストとして取得
     cameraInfoStr = camera->GetTransform().GetInfoToWString(3);
 
+    //  Cubeの移動
+    XMVECTOR cube1Pos = cube1->GetTransform().GetPosition();
+    float x = XMVectorGetX(cube1Pos) - 1.8f * elapsedTime;
+    cube1->GetTransform().SetPosition(XMVectorSet(x, 0.0f, 0.0f, 0.0f));
+
+    if (XMVectorGetX(cube1->GetTransform().GetPosition()) < -10.0f) {
+        cube1->GetTransform().SetPosition(XMVectorSet(4, 0.0f, 0.0f, 0.0f));
+    }
+
+    //  モデルの更新
+    modelManager->UpdateAll();
+
     elapsedTime;
 }
 
@@ -191,6 +206,9 @@ void Game::Render()
     context->IASetInputLayout(inputLayout);
     //  定数バッファを設定する
     context->VSSetConstantBuffers(0,1,&constantBuffer);
+
+    //  テクスチャサンプラーを設定する
+    context->PSSetSamplers(0, 1, &samplerState);
 
     //  コンスタントバッファを設定する
     //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
@@ -404,7 +422,11 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    modelManager->AddModel("Models/Cube/Cube.obj");
+    modelManager->AddModel("Models/Sphere/Sphere.obj");
+    cube1 = modelManager->AddModel("Models/Sphere/Sphere.obj");
+    cube1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 0.0f, 0.0f));
+    Model* cube2 = modelManager->AddModel("Models/Sphere/Sphere.obj");
+    cube2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 0.0f, 0.0f));
     //modelManager->AddModel("Models/teapot.obj");
     //Model* skull1 = modelManager->AddModel("Moels/skull.obj");
     //skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
@@ -423,6 +445,22 @@ void Game::CreateDeviceDependentResources()
 
     //  定数バッファを生成する
     CreateConstantBuffer(m_deviceResources->GetD3DDevice(), &constantBuffer);
+
+    //  テクスチャサンプラーの生成
+    samplerState = nullptr;
+    D3D11_SAMPLER_DESC sampDesc = {};
+    sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    sampDesc.MinLOD = 0;
+    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    HRESULT hr = device->CreateSamplerState(&sampDesc, &samplerState);
+    if (FAILED(hr)) {
+        // エラー処理
+    }
 
     device;
 }

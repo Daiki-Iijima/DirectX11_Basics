@@ -49,4 +49,7 @@ private:
     //  デバイス
     ID3D11Device1* m_device;
     ID3D11DeviceContext* m_deviceContext;
+
+    //  当たり判定のリスト
+    std::vector<BaseHitDetection*> m_hitDetections;
 };
