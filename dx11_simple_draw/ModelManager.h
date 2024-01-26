@@ -14,7 +14,7 @@ public:
     ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
-    Model* AddModel(string path);
+    Model* AddModel(string path, string modelName = "");
 
     //  モデルの削除
     void RemoveModel(int index);
@@ -27,6 +27,9 @@ public:
 
     //  指定したモデルの描画
     void Draw(int index, ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer);
+
+    void DrawUIAll();
+    void DrawUI(int index);
 
     //  すべてのモデルの更新
     void UpdateAll();

@@ -186,10 +186,12 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="Common\pch.h" />
     <ClInclude Include="Common\StepTimer.h" />
+    <ClInclude Include="HitDetection\HitDetectionDebugView.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="HitDetection\SphereHitDetection.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="TransformDebugView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HitDetection\BaseHitDetection.cpp" />

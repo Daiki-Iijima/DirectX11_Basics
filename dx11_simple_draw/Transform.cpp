@@ -3,14 +3,14 @@
 
 Transform::Transform() {
     m_position = XMVECTOR();
-    m_degressRotation = XMVECTOR();
+    m_degreesRotation = XMVECTOR();
     m_radianRotation = XMVECTOR();
     m_scale = XMVectorSet(1.f, 1.f, 1.f, 1.f);
 }
 
 Transform::Transform(XMVECTOR position, XMVECTOR degressRotation, XMVECTOR scale) {
     m_position = position;
-    m_degressRotation = degressRotation;
+    m_degreesRotation = degressRotation;
     m_radianRotation = XMVectorSet(XMConvertToRadians(XMVectorGetX(degressRotation)), XMConvertToRadians(XMVectorGetY(degressRotation)), XMConvertToRadians(XMVectorGetZ(degressRotation)), 0.0f);
     m_scale = scale;
 }
@@ -19,7 +19,7 @@ wstring Transform::GetInfoToWString(int precision) const {
     wstringstream ss;
     ss << fixed << setprecision(precision); //  小数点以下3桁で表示
     ss << L"Position: " << XMVectorGetX(m_position) << L"," << XMVectorGetY(m_position) << L"," << XMVectorGetZ(m_position) <<
-          L"\nRotation: " << XMVectorGetX(m_degressRotation) << L"," << XMVectorGetY(m_degressRotation) << L"," << XMVectorGetZ(m_degressRotation) << 
+          L"\nRotation: " << XMVectorGetX(m_degreesRotation) << L"," << XMVectorGetY(m_degreesRotation) << L"," << XMVectorGetZ(m_degreesRotation) << 
           L"\nScale: " << XMVectorGetX(m_scale) << L"," << XMVectorGetY(m_scale) << L"," << XMVectorGetZ(m_scale);
     return ss.str();
 }
@@ -59,14 +59,18 @@ void Transform::SetPosition(XMVECTOR position) {
     m_position = position;
 }
 
-void Transform::SetDegressRotation(float x, float y, float z) {
-    m_degressRotation = XMVectorSet(x, y, z, 0.0f);
+void Transform::SetDegreesRotation(float x, float y, float z) {
+    m_degreesRotation = XMVectorSet(x, y, z, 0.0f);
     m_radianRotation = XMVectorSet(XMConvertToRadians(x), XMConvertToRadians(y), XMConvertToRadians(z), 0.0f);
 }
 
 void Transform::SetRadianRotation(float x, float y, float z) {
     m_radianRotation = XMVectorSet(x, y, z, 0.0f);
-    m_degressRotation = XMVectorSet(XMConvertToDegrees(x), XMConvertToDegrees(y), XMConvertToDegrees(z), 0.0f);
+    m_degreesRotation = XMVectorSet(XMConvertToDegrees(x), XMConvertToDegrees(y), XMConvertToDegrees(z), 0.0f);
+}
+
+void Transform::SetScale(float x, float y, float z) {
+    m_scale = XMVectorSet(x, y, z, 0.0f);
 }
 
 //  Getter
@@ -75,11 +79,15 @@ XMVECTOR Transform::GetPosition() const {
     return m_position;
 }
 //  角度
-XMVECTOR Transform::GetDegressRotation() const {
-    return m_degressRotation;
+XMVECTOR Transform::GetDegreesRotation() const {
+    return m_degreesRotation;
 }
 XMVECTOR Transform::GetRadianRotation() const {
     return  m_radianRotation;
+}
+//  スケール
+XMVECTOR Transform::GetScale() const {
+    return m_scale;
 }
 
 //  基底ベクトル
