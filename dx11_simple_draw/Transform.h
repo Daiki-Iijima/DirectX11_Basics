@@ -9,17 +9,19 @@ using namespace DirectX;
 
 class Transform
 {
-public :
+public:
     //  コンストラクタ
     Transform();
-    Transform(XMVECTOR position, XMVECTOR degressRotation, XMVECTOR scale);
+    Transform(XMVECTOR position, XMVECTOR degreesRotation, XMVECTOR scale);
 
     //  位置
     void SetPosition(XMVECTOR position);
     void SetPosition(float x, float y, float z);
     //  角度
-    void SetDegressRotation(float x, float y, float z);
+    void SetDegreesRotation(float x, float y, float z);
     void SetRadianRotation(float x, float y, float z);
+    //  スケール
+    void SetScale(float x, float y, float z);
 
     //  Getter
     XMMATRIX GetWorldRotationMatrix();
@@ -27,8 +29,11 @@ public :
     XMVECTOR GetPosition() const;
     XMMATRIX GetWorldMatrix();
     //  角度
-    XMVECTOR GetDegressRotation() const;
+    XMVECTOR GetDegreesRotation() const;
     XMVECTOR GetRadianRotation() const;
+    //  スケール
+    XMVECTOR GetScale() const;
+
     //  基底ベクトル
     XMVECTOR GetForward();
     XMVECTOR GetRight();
@@ -42,7 +47,7 @@ private:
     XMVECTOR m_position;
 
     //  角度
-    XMVECTOR m_degressRotation;   //  度数
+    XMVECTOR m_degreesRotation;   //  度数
     XMVECTOR m_radianRotation;    //  弧度
 
     //  スケール    

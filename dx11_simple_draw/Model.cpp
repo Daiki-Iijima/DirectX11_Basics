@@ -6,11 +6,18 @@ Model::Model():IndiceCount(0) {
     indices = std::vector<unsigned short>();
     vertexBuffer = nullptr;
     indexBuffer = nullptr;
+    m_name = "no name";
     m_transform = Transform();
+    m_pTransformView = new TransformDebugView(m_transform);
     m_hitDetection = nullptr;
 }
 
-Model::Model(Transform transform,BaseHitDetection* hitDetection) :Model() {
+Model::Model(std::string name) : Model() {
+    this->m_name = name;
+}
+
+Model::Model(std::string name,Transform transform,BaseHitDetection* hitDetection) :Model() {
+    this->m_name = name;
     m_hitDetection = hitDetection;
     this->m_transform = transform;
 }

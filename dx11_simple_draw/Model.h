@@ -2,6 +2,7 @@
 
 #include <DirectXMath.h>
 #include "Transform.h"
+#include "TransformDebugView.h"
 #include "HitDetection/BaseHitDetection.h"
 
 using namespace DirectX;
@@ -17,7 +18,9 @@ class Model
 {
 public:
     Model();
-    Model(Transform transform,BaseHitDetection* hitDetection);
+    Model(std::string name);
+    Model(std::string name, Transform transform, BaseHitDetection* hitDetection);
+
 
     //  インデックスバッファの数
     int IndiceCount;
@@ -43,8 +46,16 @@ public:
         return m_textureView.Get();
     }
 
+    TransformDebugView& GetTransformView() {
+        return *m_pTransformView;
+    }
+
     BaseHitDetection* GetHitDetection() {
         return m_hitDetection;
+    }
+
+    std::string GetName() {
+        return m_name;
     }
 
     XMVECTOR GetCenter();
@@ -58,12 +69,20 @@ public:
         m_hitDetection = hitDetection;
     }
 
+    void SetName(std::string name) {
+        m_name = name;
+    }
+
 private:
     //  Bufferの生成
     HRESULT CreateVertexBuffer(ID3D11Device& device);
     HRESULT CreateIndexBuffer(ID3D11Device& device);
 
     Transform m_transform;
+    TransformDebugView* m_pTransformView;
+
+    //  モデル名(表示に使う)
+    std::string m_name;
 
     //  テクスチャ
     ComPtr<ID3D11ShaderResourceView> m_textureView;

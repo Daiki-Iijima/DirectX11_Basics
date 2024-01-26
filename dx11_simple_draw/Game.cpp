@@ -4,6 +4,12 @@
 
 #include "Common/pch.h"
 #include "Game.h"
+#include <codecvt>
+#include <locale>
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx11.h>
+#include "TransformDebugView.h"
 
 extern void ExitGame() noexcept;
 
@@ -28,6 +34,7 @@ std::wstring cameraInfoStr;
 ModelManager* modelManager;
 
 Model* cube1;
+TransformDebugView* cameraTransformView;
 
 Game::Game() noexcept(false)
 {
@@ -58,6 +65,7 @@ void Game::Initialize(HWND window, int width, int height)
 
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+    cameraTransformView = new TransformDebugView(camera->GetTransform());
 
     //  Direct2Dの初期化
     //  DirectWriteとDirect2Dのファクトリを作成
@@ -110,7 +118,7 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
 
     //  現在のカメラの位置を取得
     XMVECTOR cameraPos = camera->GetTransform().GetPosition();
-    XMVECTOR cameraRotation = camera->GetTransform().GetDegressRotation();
+    XMVECTOR cameraRotation = camera->GetTransform().GetDegreesRotation();
 
     if (GetAsyncKeyState('W') & 0x8000) {
         cameraPos += forward * elapsedTime * moveSpeed;
@@ -153,7 +161,7 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
         cameraRotation += XMVectorSet(0.0f, 0.0f, -elapsedTime * rotateSpeed, 0.0f);
     }
 
-    camera->GetTransform().SetDegressRotation(XMVectorGetX(cameraRotation), XMVectorGetY(cameraRotation), XMVectorGetZ(cameraRotation));
+    camera->GetTransform().SetDegreesRotation(XMVectorGetX(cameraRotation), XMVectorGetY(cameraRotation), XMVectorGetZ(cameraRotation));
 
     camera->GetViewMatrix(view);
 }
@@ -184,6 +192,13 @@ void Game::Update(DX::StepTimer const& timer)
 }
 
 #pragma endregion
+
+// wchar_t文字列をchar文字列に変換
+std::string wcharToChar(const wchar_t* wcharString)
+{
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(wcharString);
+}
 
 #pragma region Frame Render
 // Draws the scene.
@@ -218,62 +233,76 @@ void Game::Render()
     XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
 
     modelManager->DrawAll(*context, cb, *constantBuffer);
-    
-    context;
 
     m_deviceResources->PIXEndEvent();
 
+    //// DeviceResources で SwapChain のバックバッファを取得
+    //Microsoft::WRL::ComPtr<IDXGISurface> backBuffer;
+    //HRESULT hr = m_deviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 
-    // DeviceResources で SwapChain のバックバッファを取得
-    Microsoft::WRL::ComPtr<IDXGISurface> backBuffer;
-    HRESULT hr = m_deviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    //// Direct2D レンダーターゲットプロパティを設定
+    //D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
+    //    D2D1_RENDER_TARGET_TYPE_DEFAULT,
+    //    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+    //    0,
+    //    0);
 
+    //// Direct2D レンダーターゲットを作成
+    //Microsoft::WRL::ComPtr<ID2D1RenderTarget> d2dRenderTarget;
+    //hr = d2dFactory->CreateDxgiSurfaceRenderTarget(backBuffer.Get(), &props, &d2dRenderTarget);
 
-    // Direct2D レンダーターゲットプロパティを設定
-    D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
-        D2D1_RENDER_TARGET_TYPE_DEFAULT,
-        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
-        0,
-        0);
+    ////  テキスト用のブラシを作成
+    //ComPtr<ID2D1SolidColorBrush> textColorBrush;
+    //D2D1_COLOR_F textColor = D2D1::ColorF(D2D1::ColorF::Black,1.f);
+    //d2dRenderTarget->CreateSolidColorBrush(textColor, &textColorBrush);
 
-    // Direct2D レンダーターゲットを作成
-    Microsoft::WRL::ComPtr<ID2D1RenderTarget> d2dRenderTarget;
-    hr = d2dFactory->CreateDxgiSurfaceRenderTarget(backBuffer.Get(), &props, &d2dRenderTarget);
+    ////  CameraPosition用の背景色を作成
+    //ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
+    //D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.8f);
+    //d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
 
-    //  テキスト用のブラシを作成
-    ComPtr<ID2D1SolidColorBrush> textColorBrush;
-    D2D1_COLOR_F textColor = D2D1::ColorF(D2D1::ColorF::Black,1.f);
-    d2dRenderTarget->CreateSolidColorBrush(textColor, &textColorBrush);
+    //// 描画開始
+    //d2dRenderTarget->BeginDraw();
 
-    //  CameraPosition用の背景色を作成
-    ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
-    D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.8f);
-    d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
+    ////  表示用領域を定義
+    //D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 330, 100);
 
-    // 描画開始
-    d2dRenderTarget->BeginDraw();
+    ////  カメラ位置情報を描画
+    ////  背景を描画
+    //d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+    ////  テキストを描画
+    //d2dRenderTarget->DrawText(
+    //    cameraInfoStr.c_str(),         // 描画するテキスト
+    //    static_cast<UINT32>(cameraInfoStr.length()), // テキストの長さ
+    //    textFormat.Get(),           // テキストフォーマット
+    //    positionInfoRect,               // 描画する領域
+    //    textColorBrush.Get());            // ブラシ
 
-    //  表示用領域を定義
-    D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 330, 100);
+    //// 描画終了
+    //hr = d2dRenderTarget->EndDraw();
 
-    //  カメラ位置情報を描画
-    //  背景を描画
-    d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
-    //  テキストを描画
-    d2dRenderTarget->DrawText(
-        cameraInfoStr.c_str(),         // 描画するテキスト
-        static_cast<UINT32>(cameraInfoStr.length()), // テキストの長さ
-        textFormat.Get(),           // テキストフォーマット
-        positionInfoRect,               // 描画する領域
-        textColorBrush.Get());            // ブラシ
+    //if (FAILED(hr)) {
+    //    // エラー処理
+    //    return;
+    //}
 
-    // 描画終了
-    hr = d2dRenderTarget->EndDraw();
+    // Start the Dear ImGui frame
+    ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
 
-    if (FAILED(hr)) {
-        // エラー処理
-        return;
+    ImGui::Begin("Properties");
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+        cameraTransformView->RenderComponent();
     }
+    modelManager->DrawUIAll();
+    ImGui::End();
+
+    // Rendering
+    ImGui::Render();
+    ImDrawData* pDrawData = ImGui::GetDrawData();
+    ImGui_ImplDX11_RenderDrawData(pDrawData);
 
     // Show the new frame.
     m_deviceResources->Present();
@@ -350,8 +379,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 800;
-    height = 600;
+    width = 1920;
+    height = 1080;
 }
 #pragma endregion
 
@@ -422,10 +451,10 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    modelManager->AddModel("Models/Sphere/Sphere.obj");
-    cube1 = modelManager->AddModel("Models/Sphere/Sphere.obj");
+    modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere1");
+    cube1 = modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere2");
     cube1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 0.0f, 0.0f));
-    Model* cube2 = modelManager->AddModel("Models/Sphere/Sphere.obj");
+    Model* cube2 = modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere3");
     cube2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 0.0f, 0.0f));
     //modelManager->AddModel("Models/teapot.obj");
     //Model* skull1 = modelManager->AddModel("Moels/skull.obj");
@@ -482,11 +511,21 @@ void Game::CreateWindowSizeDependentResources()
 
     //  プロジェクション行列を生成
     float fovAngleY =  XMConvertToRadians( 45.0f );           // 垂直方向の視野角（ラジアン単位）
-    float aspectRatio = size.right / size.bottom;             // アスペクト比
+    float aspectRatio = static_cast<float>(size.right) / static_cast<float>(size.bottom);             // アスペクト比
     float nearZ = 0.01f;                                      // 近クリップ面
     float farZ = 100.0f;                                      // 遠クリップ面
 
     m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
+
+    //  ImGuiの初期化
+    if (ImGui::GetCurrentContext() == nullptr) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        bool result = ImGui_ImplWin32_Init(m_deviceResources->GetWindow());
+        result = ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
+
+        ImGui::StyleColorsDark();   //  ダークテーマを使用
+    }
 }
 
 void Game::OnDeviceLost()
@@ -496,6 +535,11 @@ void Game::OnDeviceLost()
     pixelShader->Release();
     inputLayout->Release();
     constantBuffer->Release();
+
+    //  ImGuiの解放
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
 
 void Game::OnDeviceRestored()

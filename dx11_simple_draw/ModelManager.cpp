@@ -4,6 +4,7 @@
 #pragma comment(lib, "DirectXTex.lib")
 #include <DirectXTex.h>
 #include "HitDetection/SphereHitDetection.h"
+#include "HitDetection/HitDetectionDebugView.h"
 
 using namespace DirectX;
 
@@ -133,12 +134,19 @@ ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceCont
     m_deviceContext = &deviceContext;
 }
 
-Model* ModelManager::AddModel(string path)
+Model* ModelManager::AddModel(string path, string modelName)
 {
-    Model* model = new Model();
+    Model* model;
+    if (modelName == "") {
+        model = new Model();
+    }
+    else {
+        model = new Model(modelName);
+    }
     LoadModel(*model, path);
     //  当たり判定の生成
     SphereHitDetection* hitDetection = new SphereHitDetection(model);
+    
     // 当たり判定開始時のコールバックを設定
     hitDetection->SetOnHitStart([](BaseHitDetection* other) {
     OutputDebugStringW(L"当たり判定開始\n");
@@ -167,6 +175,25 @@ Model* ModelManager::AddModel(string path)
     }
 
     return model;
+}
+
+void ModelManager::DrawUIAll()
+{
+    int i = 0;
+    for (Model* model : m_models) {
+        DrawUI(i);
+        i++;
+    }
+}
+
+void ModelManager::DrawUI(int index) {
+    Model* model = m_models[index];
+    if (model == nullptr) {
+        throw std::exception("ModelManager::GetModel() : model is nullptr.");
+    }
+    if (ImGui::CollapsingHeader(model->GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        model->GetTransformView().RenderComponent();
+    }
 }
 
 void ModelManager::RemoveModel(int index)
