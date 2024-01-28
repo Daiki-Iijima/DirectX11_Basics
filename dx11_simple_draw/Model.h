@@ -21,18 +21,17 @@ public:
     Model(std::string name);
     Model(std::string name, Transform transform, BaseHitDetection* hitDetection);
 
-
     //  インデックスバッファの数
-    int IndiceCount;
+    std::vector<int> IndiceCounts;
 
     //  === CPUメモリ ===
     //  VertexBufferの生成ができたら解放してもいい気がする
-    std::vector<Vertex> vertices;
-    std::vector<unsigned short> indices;
+    std::vector<std::vector<Vertex>> vertices;
+    std::vector<std::vector<unsigned short>> indices;
 
     //  === GPUメモリ ===
-    ComPtr<ID3D11Buffer> vertexBuffer;
-    ComPtr<ID3D11Buffer> indexBuffer;
+    std::vector<ComPtr<ID3D11Buffer>> vertexBuffer;
+    std::vector<ComPtr<ID3D11Buffer>> indexBuffer;
 
     //  Bufferの生成
     HRESULT CreateBuffers(ID3D11Device& device);
@@ -42,8 +41,12 @@ public:
         return m_transform;
     }
 
-    ID3D11ShaderResourceView* GetTexture()  {
-        return m_textureView.Get();
+    ID3D11ShaderResourceView* GetTexture(int index) {
+        return m_textureViews[index].Get();
+    }
+
+    int GetTextureCount() {
+        return m_textureViews.size();
     }
 
     TransformDebugView& GetTransformView() {
@@ -61,8 +64,8 @@ public:
     XMVECTOR GetCenter();
 
     //  Setter
-    void SetTexture(ID3D11ShaderResourceView* textureView) {
-        m_textureView = textureView;
+    void AddTexture(ID3D11ShaderResourceView* textureView) {
+        m_textureViews.push_back(textureView);
     }
 
     void SetHitDetection(BaseHitDetection* hitDetection) {
@@ -85,7 +88,7 @@ private:
     std::string m_name;
 
     //  テクスチャ
-    ComPtr<ID3D11ShaderResourceView> m_textureView;
+    std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;
 
     //  当たり判定
     BaseHitDetection* m_hitDetection;

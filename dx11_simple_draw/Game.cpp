@@ -177,13 +177,13 @@ void Game::Update(DX::StepTimer const& timer)
     cameraInfoStr = camera->GetTransform().GetInfoToWString(3);
 
     //  Cubeの移動
-    XMVECTOR cube1Pos = cube1->GetTransform().GetPosition();
-    float x = XMVectorGetX(cube1Pos) - 1.8f * elapsedTime;
-    cube1->GetTransform().SetPosition(XMVectorSet(x, 0.0f, 0.0f, 0.0f));
+    //XMVECTOR cube1Pos = cube1->GetTransform().GetPosition();
+    //float x = XMVectorGetX(cube1Pos) - 1.8f * elapsedTime;
+    //cube1->GetTransform().SetPosition(XMVectorSet(x, 0.0f, 0.0f, 0.0f));
 
-    if (XMVectorGetX(cube1->GetTransform().GetPosition()) < -10.0f) {
-        cube1->GetTransform().SetPosition(XMVectorSet(4, 0.0f, 0.0f, 0.0f));
-    }
+    //if (XMVectorGetX(cube1->GetTransform().GetPosition()) < -10.0f) {
+    //    cube1->GetTransform().SetPosition(XMVectorSet(4, 0.0f, 0.0f, 0.0f));
+    //}
 
     //  モデルの更新
     modelManager->UpdateAll();
@@ -451,17 +451,7 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere1");
-    cube1 = modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere2");
-    cube1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 0.0f, 0.0f));
-    Model* cube2 = modelManager->AddModel("Models/Sphere/Sphere.obj", "sphere3");
-    cube2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 0.0f, 0.0f));
-    //modelManager->AddModel("Models/teapot.obj");
-    //Model* skull1 = modelManager->AddModel("Moels/skull.obj");
-    //skull1->GetTransform().SetPosition(XMVectorSet(4.0f, 0.0f, 2.0f, 0.0f));
-    //skull1->GetTransform().SetDegressRotation(90.0f,0,0);
-    //Model* skull2 = modelManager->AddModel("Models/skull.obj");
-    //skull2->GetTransform().SetPosition(XMVectorSet(-4.0f, 0.0f, 2.0f, 0.0f));
+    modelManager->AddModel("Models/TankO.obj");
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);

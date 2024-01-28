@@ -11,7 +11,7 @@ BoundingSphere SphereHitDetection::GetBoundingSphere() {
     BoundingSphere boundingSphere;
 
     boundingSphere.center = m_model->GetCenter();
-    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->vertices);
+    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->vertices[1]);
 
     return boundingSphere;
 }

@@ -19,7 +19,7 @@ HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context
     return hr;
 }
 
-void CreateWhiteTexture(ID3D11Device* device, ID3D11ShaderResourceView** textureView) {
+void CreateTexture(ID3D11Device* device,aiColor3D diffuseColor, ID3D11ShaderResourceView** textureView) {
     D3D11_TEXTURE2D_DESC texDesc = {};
     texDesc.Width = 1;
     texDesc.Height = 1;
@@ -31,15 +31,15 @@ void CreateWhiteTexture(ID3D11Device* device, ID3D11ShaderResourceView** texture
     texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
     D3D11_SUBRESOURCE_DATA initData = {};
-    unsigned int white = 0xffffffff; // RGBAで白色
-    initData.pSysMem = &white;
+    unsigned int color = (255 << 24) | ((int)(diffuseColor.b * 255) << 16) | ((int)(diffuseColor.g * 255) << 8) | (int)(diffuseColor.r * 255);
+    initData.pSysMem = &color;
     initData.SysMemPitch = sizeof(unsigned int);
 
-    ID3D11Texture2D* whiteTex = nullptr;
-    device->CreateTexture2D(&texDesc, &initData, &whiteTex);
+    ID3D11Texture2D* generateTexture = nullptr;
+    device->CreateTexture2D(&texDesc, &initData, &generateTexture);
 
-    device->CreateShaderResourceView(whiteTex, nullptr, textureView);
-    whiteTex->Release();
+    device->CreateShaderResourceView(generateTexture, nullptr, textureView);
+    generateTexture->Release();
 }
 
 void ModelManager::LoadModel(Model& distModel, string modelPath) {
@@ -63,6 +63,9 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
 
+        distModel.vertices.push_back(std::vector<Vertex>());
+        distModel.indices.push_back(std::vector<unsigned short>());
+
         // 頂点情報の抽出
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex vertex;
@@ -81,20 +84,21 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
                 vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
             }
 
-            distModel.vertices.push_back(vertex);
+            distModel.vertices[m].push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
+                distModel.indices[m].push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
 
         //  マテリアル情報の抽出
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
+        //  テクスチャの読み込み
         for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
             aiString str;
             material->GetTexture(aiTextureType_DIFFUSE, i, &str);
@@ -113,20 +117,28 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
             CreateTextureFromPath(m_device,m_deviceContext,path,&textureView);
 
             //  モデルクラスに保存
-            distModel.SetTexture(textureView);
+            distModel.AddTexture(textureView);
         }
 
-        if (distModel.GetTexture() == nullptr) {
+        if (distModel.GetTextureCount() <= m) {
             //  テクスチャがない場合は白色のテクスチャを生成
             ID3D11ShaderResourceView* textureView = nullptr;
-            CreateWhiteTexture(m_device, &textureView);
-            distModel.SetTexture(textureView);
+            aiColor3D color(0.f, 0.f, 0.f);
+            //  色が取得できた場合はその色をテクスチャにする
+            if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
+                CreateTexture(m_device, color, &textureView);
+            }
+            //  色が取得できなかった場合は白色
+            else {
+                CreateTexture(m_device, color, &textureView);
+            }
+            distModel.AddTexture(textureView);
         }
     }
 }
 
 
-ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceContext)
+ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext)
 {
     m_models = std::vector<Model*>();
 
@@ -146,10 +158,10 @@ Model* ModelManager::AddModel(string path, string modelName)
     LoadModel(*model, path);
     //  当たり判定の生成
     SphereHitDetection* hitDetection = new SphereHitDetection(model);
-    
+
     // 当たり判定開始時のコールバックを設定
     hitDetection->SetOnHitStart([](BaseHitDetection* other) {
-    OutputDebugStringW(L"当たり判定開始\n");
+        OutputDebugStringW(L"当たり判定開始\n");
         });
 
     // 当たり判定持続中のコールバックを設定
@@ -158,7 +170,7 @@ Model* ModelManager::AddModel(string path, string modelName)
 
     // 当たり判定終了時のコールバックを設定
     hitDetection->SetOnHitExit([](BaseHitDetection* other) {
-    OutputDebugStringW(L"当たり判定終了\n");
+        OutputDebugStringW(L"当たり判定終了\n");
         });
 
     model->SetHitDetection(hitDetection);
@@ -226,25 +238,27 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
-    XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
-    deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
+    for (int i = 0; i < model->vertexBuffer.size(); ++i) {
+        XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
+        deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
 
-    //  とりあえず受け取る
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
+        //  とりあえず受け取る
+        UINT stride = sizeof(Vertex);
+        UINT offset = 0;
 
-    deviceContext.IASetVertexBuffers(0, 1, model->vertexBuffer.GetAddressOf(), &stride, &offset);
-    deviceContext.IASetIndexBuffer(model->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-    deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        deviceContext.IASetVertexBuffers(0, 1, model->vertexBuffer[i].GetAddressOf(), &stride, &offset);
+        deviceContext.IASetIndexBuffer(model->indexBuffer[i].Get(), DXGI_FORMAT_R16_UINT, 0);
+        deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    //  テクスチャの設定
-    if (model->GetTexture() != nullptr) {
-        ID3D11ShaderResourceView* textureView = model->GetTexture();
-        ID3D11ShaderResourceView* views[] = { textureView };
-        deviceContext.PSSetShaderResources(0, 1, views);
+        //  テクスチャの設定
+        if (model->GetTexture(i) != nullptr) {
+            ID3D11ShaderResourceView* textureView = model->GetTexture(i);
+            ID3D11ShaderResourceView* views[] = { textureView };
+            deviceContext.PSSetShaderResources(0, 1, views);
+        }
+
+        deviceContext.DrawIndexed(model->IndiceCounts[i], 0, 0);
     }
-
-    deviceContext.DrawIndexed(model->IndiceCount, 0, 0);
 }
 
 void ModelManager::UpdateAll()
