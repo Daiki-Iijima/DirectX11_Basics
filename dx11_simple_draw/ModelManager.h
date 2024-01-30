@@ -14,7 +14,7 @@ public:
     ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
-    Model* AddModel(string path, string modelName = "");
+    std::vector<Model*>* AddModel(string path);
 
     //  モデルの削除
     void RemoveModel(int index);
@@ -47,7 +47,7 @@ private:
     std::vector<Model*> m_models;
 
     //  モデルの読み込み
-    void LoadModel(Model& model, string path);
+    void LoadModel(std::vector<Model*>* models, string modelPath);
 
     //  デバイス
     ID3D11Device1* m_device;

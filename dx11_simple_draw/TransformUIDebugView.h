@@ -4,11 +4,11 @@
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
 #include <functional>
+#include "IComponentUIDebugView.h"
 
-class TransformDebugView
-{
+class TransformUIDebugView : public IComponentUIDebugView {
 public:
-    TransformDebugView(Transform& transform) :m_transform(transform), m_isScaleUniform(false) {}
+    TransformUIDebugView(Transform& transform) :m_transform(transform), m_isScaleUniform(false) {}
 
     using DragFloatCallback = std::function<void(float[3])>;
 
@@ -81,7 +81,8 @@ public:
         }
     }
 
-    void RenderComponent() {
+
+    void ComponentUIRender() override {
         // ポインタの番地を基にユニークなIDを生成
         uintptr_t ptrId = reinterpret_cast<uintptr_t>(&m_transform);
         std::string treeNodeLabel = "Transform##" + std::to_string(ptrId);
@@ -98,6 +99,10 @@ public:
                 }, true, &m_isScaleUniform);
             ImGui::TreePop();
         }
+    }
+
+    int GetRenderPriority() override {
+        return 0;
     }
 
 private:

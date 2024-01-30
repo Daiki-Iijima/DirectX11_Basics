@@ -2,17 +2,12 @@
 
 #include <DirectXMath.h>
 #include "Transform.h"
-#include "TransformDebugView.h"
+#include "TransformUIDebugView.h"
 #include "HitDetection/BaseHitDetection.h"
+#include "Mesh.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
-
-struct Vertex {
-    XMFLOAT3 position;
-    XMFLOAT3 normal;
-    XMFLOAT2 texcoord;
-};
 
 class Model
 {
@@ -20,21 +15,6 @@ public:
     Model();
     Model(std::string name);
     Model(std::string name, Transform transform, BaseHitDetection* hitDetection);
-
-    //  インデックスバッファの数
-    std::vector<int> IndiceCounts;
-
-    //  === CPUメモリ ===
-    //  VertexBufferの生成ができたら解放してもいい気がする
-    std::vector<std::vector<Vertex>> vertices;
-    std::vector<std::vector<unsigned short>> indices;
-
-    //  === GPUメモリ ===
-    std::vector<ComPtr<ID3D11Buffer>> vertexBuffer;
-    std::vector<ComPtr<ID3D11Buffer>> indexBuffer;
-
-    //  Bufferの生成
-    HRESULT CreateBuffers(ID3D11Device& device);
 
     //  Getter
     Transform& GetTransform() {
@@ -49,7 +29,7 @@ public:
         return m_textureViews.size();
     }
 
-    TransformDebugView& GetTransformView() {
+    TransformUIDebugView& GetTransformView() {
         return *m_pTransformView;
     }
 
@@ -61,7 +41,9 @@ public:
         return m_name;
     }
 
-    XMVECTOR GetCenter();
+    Mesh& GetMesh() {
+        return *m_pMesh;
+    }
 
     //  Setter
     void AddTexture(ID3D11ShaderResourceView* textureView) {
@@ -76,16 +58,23 @@ public:
         m_name = name;
     }
 
+    void SetMesh(Mesh* mesh) {
+        m_pMesh = mesh;
+    }
+
+
 private:
-    //  Bufferの生成
-    HRESULT CreateVertexBuffer(ID3D11Device& device);
-    HRESULT CreateIndexBuffer(ID3D11Device& device);
-
-    Transform m_transform;
-    TransformDebugView* m_pTransformView;
-
     //  モデル名(表示に使う)
     std::string m_name;
+
+    Mesh* m_pMesh;
+
+    Transform m_transform;
+    TransformUIDebugView* m_pTransformView;
+
+    //  親子関係
+    Model* m_pParent;               //  親
+    std::vector<Model*> m_pChilds;  //  子
 
     //  テクスチャ
     std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;

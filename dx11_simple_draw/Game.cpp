@@ -9,7 +9,7 @@
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
-#include "TransformDebugView.h"
+#include "TransformUIDebugView.h"
 
 extern void ExitGame() noexcept;
 
@@ -34,7 +34,7 @@ std::wstring cameraInfoStr;
 ModelManager* modelManager;
 
 Model* cube1;
-TransformDebugView* cameraTransformView;
+IComponentUIDebugView* cameraTransformView;
 
 Game::Game() noexcept(false)
 {
@@ -65,7 +65,7 @@ void Game::Initialize(HWND window, int width, int height)
 
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
-    cameraTransformView = new TransformDebugView(camera->GetTransform());
+    cameraTransformView = new TransformUIDebugView(camera->GetTransform());
 
     //  Direct2Dの初期化
     //  DirectWriteとDirect2Dのファクトリを作成
@@ -294,7 +294,7 @@ void Game::Render()
 
     ImGui::Begin("Properties");
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-        cameraTransformView->RenderComponent();
+        cameraTransformView->ComponentUIRender();
     }
     modelManager->DrawUIAll();
     ImGui::End();
@@ -452,6 +452,7 @@ void Game::CreateDeviceDependentResources()
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
     modelManager->AddModel("Models/TankO.obj");
+    //modelManager->AddModel("Models/multi_material_cube.obj");
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);

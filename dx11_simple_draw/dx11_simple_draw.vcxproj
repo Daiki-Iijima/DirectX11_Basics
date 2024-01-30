@@ -180,6 +180,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="IComponentUIDebugView.h" />
     <ClInclude Include="HitDetection\BaseHitDetection.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\DeviceResources.h" />
@@ -192,7 +193,7 @@
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="HitDetection\SphereHitDetection.h" />
     <ClInclude Include="Transform.h" />
-    <ClInclude Include="TransformDebugView.h" />
+    <ClInclude Include="TransformUIDebugView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="HitDetection\BaseHitDetection.cpp" />

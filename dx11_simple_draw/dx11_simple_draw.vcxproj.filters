@@ -24,8 +24,10 @@
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="HitDetection\BaseHitDetection.h" />
     <ClInclude Include="HitDetection\SphereHitDetection.h" />
-    <ClInclude Include="TransformDebugView.h" />
+    <ClInclude Include="TransformUIDebugView.h" />
     <ClInclude Include="HitDetection\HitDetectionDebugView.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="IComponentUIDebugView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\pch.cpp" />
@@ -40,6 +42,7 @@
     <ClCompile Include="ModelManager.cpp" />
     <ClCompile Include="HitDetection\BaseHitDetection.cpp" />
     <ClCompile Include="HitDetection\SphereHitDetection.cpp" />
+    <ClCompile Include="Mesh.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Assets\resource.rc" />
