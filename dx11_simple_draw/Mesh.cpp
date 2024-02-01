@@ -1,5 +1,6 @@
 #include "Common/pch.h"
 #include "Mesh.h"
+#include <string>
 
 Mesh::Mesh() :
     m_pVertices(new std::vector<Vertex>()), m_pIndices(new std::vector<unsigned short>()),
@@ -65,12 +66,9 @@ HRESULT Mesh::CreateVertexBuffer(ID3D11Device& device) {
         //   頂点バッファを生成する
         hr = device.CreateBuffer(&vertexBufferDesc, &vertexSubresourceData, m_vertexBuffer.GetAddressOf());
 
-        if (hr == S_OK) {
-            OutputDebugString(L"頂点バッファの生成に成功しました。: " + i);
-            OutputDebugString(L"\n");
-        }
-        else {
-            OutputDebugString(L"頂点バッファの生成に失敗しました。: " + i);
+        if (hr != S_OK) {
+            std::wstring message = L"頂点バッファの生成に失敗しました。: " + std::to_wstring(i);
+            OutputDebugString(message.c_str());
             OutputDebugString(L"\n");
             break;
         }
@@ -97,10 +95,7 @@ HRESULT Mesh::CreateIndexBuffer(ID3D11Device& device) {
 
     hr = device.CreateBuffer(&indexBufferDesc, &indexSubresourceData, m_indexBuffer.GetAddressOf());
 
-    if (hr == S_OK) {
-        OutputDebugString(L"頂点バッファの生成に成功しました。\n");
-    }
-    else {
+    if (hr != S_OK) {
         OutputDebugString(L"頂点バッファの生成に失敗しました。\n");
     }
     return hr;
