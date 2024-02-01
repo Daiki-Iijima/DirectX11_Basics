@@ -28,6 +28,7 @@
     <ClInclude Include="HitDetection\HitDetectionDebugView.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="IComponentUIDebugView.h" />
+    <ClInclude Include="MeshUIDebugView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\pch.cpp" />

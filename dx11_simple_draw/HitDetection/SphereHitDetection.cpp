@@ -10,8 +10,8 @@ SphereHitDetection::SphereHitDetection(Model* model) :BaseHitDetection(model), m
 BoundingSphere SphereHitDetection::GetBoundingSphere() {
     BoundingSphere boundingSphere;
 
-    boundingSphere.center = m_model->GetCenter();
-    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->vertices[1]);
+    boundingSphere.center = m_model->GetMesh().GetCenter();
+    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, *m_model->GetMesh().GetVertices());
 
     return boundingSphere;
 }

@@ -5,6 +5,7 @@
 #include "TransformUIDebugView.h"
 #include "HitDetection/BaseHitDetection.h"
 #include "Mesh.h"
+#include "MeshUIDebugView.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
@@ -29,8 +30,8 @@ public:
         return m_textureViews.size();
     }
 
-    TransformUIDebugView& GetTransformView() {
-        return *m_pTransformView;
+    vector<IComponentUIDebugView*>& GetComponentUIDebugViews() {
+        return m_componentViews;
     }
 
     BaseHitDetection* GetHitDetection() {
@@ -42,7 +43,7 @@ public:
     }
 
     Mesh& GetMesh() {
-        return *m_pMesh;
+        return m_pMesh;
     }
 
     //  Setter
@@ -58,19 +59,14 @@ public:
         m_name = name;
     }
 
-    void SetMesh(Mesh* mesh) {
-        m_pMesh = mesh;
-    }
-
-
 private:
     //  モデル名(表示に使う)
     std::string m_name;
 
-    Mesh* m_pMesh;
-
     Transform m_transform;
-    TransformUIDebugView* m_pTransformView;
+    Mesh m_pMesh;
+
+    std::vector<IComponentUIDebugView*> m_componentViews;
 
     //  親子関係
     Model* m_pParent;               //  親

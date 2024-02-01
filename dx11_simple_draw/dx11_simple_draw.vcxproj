@@ -189,6 +189,7 @@
     <ClInclude Include="Common\StepTimer.h" />
     <ClInclude Include="HitDetection\HitDetectionDebugView.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="MeshUIDebugView.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="HitDetection\SphereHitDetection.h" />

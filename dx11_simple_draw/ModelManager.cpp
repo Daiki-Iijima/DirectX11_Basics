@@ -65,9 +65,8 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
 
         Model* model = new Model();
         models->push_back(model);
-        Mesh* meshComponent = new Mesh();
-        model->SetMesh(meshComponent);
-
+        Mesh meshComponent = model->GetMesh();
+        
         //  名前の設定
         model->SetName(mesh->mName.C_Str());
 
@@ -89,14 +88,14 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
                 vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
             }
 
-            meshComponent->GetVertices()->push_back(vertex);
+            meshComponent.GetVertices()->push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                meshComponent->GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
+                meshComponent.GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
 
@@ -105,6 +104,16 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
 
         //  テクスチャの読み込み
         for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
+            // モデルパスからディレクトリを抽出
+            std::string modelDirectory = modelPath;
+            size_t lastSlashPos = modelDirectory.find_last_of("/\\");
+            if (lastSlashPos != std::string::npos) {
+                modelDirectory = modelDirectory.substr(0, lastSlashPos + 1);
+            }
+            else {
+                modelDirectory = ""; // ディレクトリが見つからない場合、カレントディレクトリを使用
+            }
+
             aiString str;
             material->GetTexture(aiTextureType_DIFFUSE, i, &str);
             //  テクスチャの読み込み
@@ -116,10 +125,17 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             ID3D11ShaderResourceView* textureView = nullptr;
 
             //  パスを正式なパスに変換
-            path = L"Models/Cube/" + path;
+            // std::string型のmodelDirectoryをstd::wstringに変換
+            std::wstring wModelDirectory(modelDirectory.begin(), modelDirectory.end());
+
+            // パスの結合
+            std::wstring fullPath = wModelDirectory + std::wstring(str.C_Str(), str.C_Str() + str.length);
+
+            // デバッグ出力
+            OutputDebugString(fullPath.c_str());
 
             //  テクスチャの生成
-            CreateTextureFromPath(m_device,m_deviceContext,path,&textureView);
+            CreateTextureFromPath(m_device,m_deviceContext,fullPath,&textureView);
 
             //  モデルクラスに保存
             model->AddTexture(textureView);
@@ -206,7 +222,9 @@ void ModelManager::DrawUI(int index) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
     if (ImGui::CollapsingHeader(model->GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        model->GetTransformView().ComponentUIRender();
+        for (IComponentUIDebugView* componentView : model->GetComponentUIDebugViews()) {
+            componentView->ComponentUIRender();
+        }
     }
 }
 
@@ -241,17 +259,17 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
     }
 
     for (Model* model : m_models) {
-            XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
-            deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
+        XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
+        deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
 
-            //  テクスチャの設定
-            if (model->GetTexture(0) != nullptr) {
-                ID3D11ShaderResourceView* textureView = model->GetTexture(0);
-                ID3D11ShaderResourceView* views[] = { textureView };
-                deviceContext.PSSetShaderResources(0, 1, views);
-            }
+        //  テクスチャの設定
+        if (model->GetTexture(0) != nullptr) {
+            ID3D11ShaderResourceView* textureView = model->GetTexture(0);
+            ID3D11ShaderResourceView* views[] = { textureView };
+            deviceContext.PSSetShaderResources(0, 1, views);
+        }
 
-            model->GetMesh().Draw(deviceContext);
+        model->GetMesh().Draw(deviceContext);
     }
 }
 

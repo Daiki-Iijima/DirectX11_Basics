@@ -3,12 +3,12 @@
 
 Mesh::Mesh() :
     m_pVertices(new std::vector<Vertex>()), m_pIndices(new std::vector<unsigned short>()),
-    m_vertexBuffer(nullptr), m_indexBuffer(nullptr) {
+    m_vertexBuffer(nullptr), m_indexBuffer(nullptr), m_renderEnabled(true) {
 }
 
 Mesh::Mesh(std::vector<Vertex>* vertices, std::vector<unsigned short>* indices) :
     m_pVertices(vertices), m_pIndices(indices),
-    m_vertexBuffer(nullptr), m_indexBuffer(nullptr) {
+    m_vertexBuffer(nullptr), m_indexBuffer(nullptr),m_renderEnabled(true) {
 }
 
 DirectX::XMVECTOR Mesh::GetCenter() {
@@ -107,6 +107,9 @@ HRESULT Mesh::CreateIndexBuffer(ID3D11Device& device) {
 }
 
 void Mesh::Draw(ID3D11DeviceContext& deviceContext) {
+    if (!m_renderEnabled) {
+        return;
+    }
     //  ‚Æ‚è‚ ‚¦‚¸Žó‚¯Žæ‚é
     UINT stride = sizeof(Vertex);
     UINT offset = 0;

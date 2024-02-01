@@ -2,12 +2,16 @@
 #include "Model.h"
 
 Model::Model(){
-    m_pMesh = nullptr;
     m_name = "no name";
+    m_componentViews = std::vector<IComponentUIDebugView*>();
     m_transform = Transform();
-    m_pTransformView = new TransformUIDebugView(m_transform);
+    m_componentViews.push_back(new TransformUIDebugView(m_transform));
+    m_pMesh = Mesh();
+    m_componentViews.push_back(new MeshUIDebugView(m_pMesh));
     m_hitDetection = nullptr;
     m_textureViews = std::vector<ComPtr<ID3D11ShaderResourceView>>();
+    m_pParent = nullptr;
+    m_pChilds = std::vector<Model*>();
 }
 
 Model::Model(std::string name) : Model() {

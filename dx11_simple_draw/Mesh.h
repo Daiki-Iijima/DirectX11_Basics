@@ -36,6 +36,14 @@ public:
 
     DirectX::XMVECTOR GetCenter();
 
+    void SetRenderEnabled(bool renderEnabled) {
+        m_renderEnabled = renderEnabled;
+    }
+
+    bool GetRenderEnabled() {
+        return m_renderEnabled;
+    }
+
 private:
     //  Buffer‚Ì¶¬
     HRESULT CreateVertexBuffer(ID3D11Device& device);
@@ -48,5 +56,8 @@ private:
     //  === GPUƒƒ‚ƒŠ ===
     ComPtr<ID3D11Buffer> m_vertexBuffer;
     ComPtr<ID3D11Buffer> m_indexBuffer;
+
+    //  •`‰æ
+    bool m_renderEnabled;
 };
 
