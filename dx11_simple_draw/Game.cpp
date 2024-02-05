@@ -226,27 +226,6 @@ void Game::Render()
     m_deviceResources->PIXBeginEvent(L"Render");
     auto context = m_deviceResources->GetD3DDeviceContext();
 
-    // Start the Dear ImGui frame
-    ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-
-    ImGui::Begin("Properties");
-    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-        cameraTransformView->ComponentUIRender();
-    }
-    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-        lightTransformView->ComponentUIRender();
-    }
-    modelManager->DrawUIAll();
-    ImGui::End();
-
-    // Rendering
-    ImGui::Render();
-    ImDrawData* pDrawData = ImGui::GetDrawData();
-    ImGui_ImplDX11_RenderDrawData(pDrawData);
-
     // TODO: Add your rendering code here.
     context->VSSetShader(verteShader,nullptr,0);
     context->VSSetConstantBuffers(0, 1, &vsConstantBuffer); //  頂点シェーダー用の定数バッファを設定する
@@ -322,6 +301,27 @@ void Game::Render()
     //    // エラー処理
     //    return;
     //}
+
+    // Start the Dear ImGui frame
+    ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::Begin("Properties");
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+        cameraTransformView->ComponentUIRender();
+    }
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        lightTransformView->ComponentUIRender();
+    }
+    modelManager->DrawUIAll();
+    ImGui::End();
+
+    // Rendering
+    ImGui::Render();
+    ImDrawData* pDrawData = ImGui::GetDrawData();
+    ImGui_ImplDX11_RenderDrawData(pDrawData);
 
 
     // Show the new frame.
