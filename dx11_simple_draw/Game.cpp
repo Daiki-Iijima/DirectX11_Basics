@@ -1,6 +1,7 @@
 //
 // Game.cpp
 //
+#pragma once
 
 #include "Common/pch.h"
 #include "Game.h"
@@ -9,7 +10,8 @@
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
-#include "TransformUIDebugView.h"
+#include "LightUIDebugView.h"
+#include "TankModel.h"
 
 extern void ExitGame() noexcept;
 
@@ -22,7 +24,8 @@ Camera* camera;
 ID3D11VertexShader* verteShader = nullptr;
 ID3D11PixelShader* pixelShader = nullptr;
 ID3D11InputLayout* inputLayout = nullptr;
-ID3D11Buffer* constantBuffer = nullptr;
+ID3D11Buffer* vsConstantBuffer = nullptr;
+ID3D11Buffer* psConstantBuffer = nullptr;
 ID3D11SamplerState* samplerState = nullptr;
 
 ComPtr<IDWriteTextFormat> textFormat;
@@ -33,8 +36,12 @@ std::wstring cameraInfoStr;
 
 ModelManager* modelManager;
 
-Model* cube1;
+PsConstantBuffer psBufferData;
+
 IComponentUIDebugView* cameraTransformView;
+IComponentUIDebugView* lightTransformView;
+
+TankModel* tankModel;
 
 Game::Game() noexcept(false)
 {
@@ -48,6 +55,10 @@ Game::Game() noexcept(false)
 // Initialize the Direct3D resources required to run.
 void Game::Initialize(HWND window, int width, int height)
 {
+
+    //  カメラの初期化
+    camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+
     m_deviceResources->SetWindow(window, width, height);
 
     m_deviceResources->CreateDeviceResources();
@@ -63,9 +74,12 @@ void Game::Initialize(HWND window, int width, int height)
     m_timer.SetTargetElapsedSeconds(1.0 / 60);
     */
 
-    //  カメラの初期化
-    camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
     cameraTransformView = new TransformUIDebugView(camera->GetTransform());
+    lightTransformView = new LightUIDebugView(psBufferData);
+
+    psBufferData.LightDirection = DirectX::XMFLOAT3(.0f, -30.0f, 10.0f); // 例: X軸方向
+    psBufferData.LightColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);     // 白色
+    psBufferData.LightIntensity = 1.0f;                                 // 強度
 
     //  Direct2Dの初期化
     //  DirectWriteとDirect2Dのファクトリを作成
@@ -171,22 +185,19 @@ void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
 
-    UpdateCameraTransform(5.0f, 90.0f, elapsedTime, m_view);
+    //UpdateCameraTransform(5.0f, 90.0f, elapsedTime, m_view);
+
+    //  実質カメラの更新
+    camera->GetViewMatrix(m_view);
 
     //  カメラの更新した座標をテキストとして取得
     cameraInfoStr = camera->GetTransform().GetInfoToWString(3);
 
-    //  Cubeの移動
-    //XMVECTOR cube1Pos = cube1->GetTransform().GetPosition();
-    //float x = XMVectorGetX(cube1Pos) - 1.8f * elapsedTime;
-    //cube1->GetTransform().SetPosition(XMVectorSet(x, 0.0f, 0.0f, 0.0f));
-
-    //if (XMVectorGetX(cube1->GetTransform().GetPosition()) < -10.0f) {
-    //    cube1->GetTransform().SetPosition(XMVectorSet(4, 0.0f, 0.0f, 0.0f));
-    //}
-
     //  モデルの更新
     modelManager->UpdateAll();
+
+    //  TankModelの更新
+    tankModel->Update(elapsedTime);
 
     elapsedTime;
 }
@@ -225,6 +236,9 @@ void Game::Render()
     if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
         cameraTransformView->ComponentUIRender();
     }
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        lightTransformView->ComponentUIRender();
+    }
     modelManager->DrawUIAll();
     ImGui::End();
 
@@ -235,22 +249,27 @@ void Game::Render()
 
     // TODO: Add your rendering code here.
     context->VSSetShader(verteShader,nullptr,0);
+    context->VSSetConstantBuffers(0, 1, &vsConstantBuffer); //  頂点シェーダー用の定数バッファを設定する
     context->PSSetShader(pixelShader,nullptr,0);
+    context->PSSetConstantBuffers(1, 1, &psConstantBuffer); //  ピクセルシェーダー用の定数バッファを設定する
     context->IASetInputLayout(inputLayout);
-    //  定数バッファを設定する
-    context->VSSetConstantBuffers(0,1,&constantBuffer);
 
     //  テクスチャサンプラーを設定する
     context->PSSetSamplers(0, 1, &samplerState);
 
+
+    //  ライトの設定
+    context->UpdateSubresource(psConstantBuffer, 0, nullptr, &psBufferData, 0, 0);
+
     //  コンスタントバッファを設定する
     //  GPU用の行列に変換しつつ、XMMATRIXをXMFLOAT4X4に変換する
     //  先にカメラ情報を設定
-    ConstantBuffer cb;
+    VsConstantBuffer cb;
     XMStoreFloat4x4(&cb.view, XMMatrixTranspose(m_view));
     XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(m_projection));
 
-    modelManager->DrawAll(*context, cb, *constantBuffer);
+    //  頂点シェーダー用の定数バッファはモデルの座標を持っているので、描画するモデルごとに更新する必要がある
+    modelManager->DrawAll(*context, cb, *vsConstantBuffer);
 
     m_deviceResources->PIXEndEvent();
 
@@ -431,12 +450,27 @@ void CreateInputLayout(ID3D11Device* device, ID3DBlob* compiledVS, ID3D11InputLa
 }
 
 /// <summary>
-/// 定数バッファを生成する
+/// 頂点定数バッファを生成する
 /// </summary>
-void CreateConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
+void CreateVSConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
     //  定数バッファを生成する
     D3D11_BUFFER_DESC constantBufferDesc = {
-        sizeof(ConstantBuffer),
+        sizeof(VsConstantBuffer),
+        D3D11_USAGE_DEFAULT,
+        D3D11_BIND_CONSTANT_BUFFER,
+        0,0,0
+    };
+
+    HRESULT result = device->CreateBuffer(&constantBufferDesc, nullptr, createdBuffer);
+}
+
+/// <summary>
+/// ピクセル定数バッファを生成する
+/// </summary>
+void CreatePSConstantBuffer(ID3D11Device* device, ID3D11Buffer** createdBuffer) {
+    //  定数バッファを生成する
+    D3D11_BUFFER_DESC constantBufferDesc = {
+        sizeof(PsConstantBuffer),
         D3D11_USAGE_DEFAULT,
         D3D11_BIND_CONSTANT_BUFFER,
         0,0,0
@@ -452,8 +486,9 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    modelManager->AddModel("Models/TankO.obj");
-    modelManager->AddModel("Models/Floar.obj");
+    vector<Model*>* models = modelManager->CreateModelFromObj("Models/TankO.obj");
+    tankModel = new TankModel(models, camera);
+    modelManager->CreateModelFromObj("Models/Map.obj");
 
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
@@ -464,8 +499,10 @@ void Game::CreateDeviceDependentResources()
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
 
-    //  定数バッファを生成する
-    CreateConstantBuffer(m_deviceResources->GetD3DDevice(), &constantBuffer);
+    //  頂点定数バッファを生成する
+    CreateVSConstantBuffer(m_deviceResources->GetD3DDevice(), &vsConstantBuffer);
+    //  ピクセル定数バッファを生成する
+    CreatePSConstantBuffer(m_deviceResources->GetD3DDevice(), &psConstantBuffer);
 
     //  テクスチャサンプラーの生成
     samplerState = nullptr;
@@ -526,7 +563,9 @@ void Game::OnDeviceLost()
     verteShader->Release();
     pixelShader->Release();
     inputLayout->Release();
-    constantBuffer->Release();
+    vsConstantBuffer->Release();
+    psConstantBuffer->Release();
+    samplerState->Release();
 
     //  ImGuiの解放
     ImGui_ImplDX11_Shutdown();

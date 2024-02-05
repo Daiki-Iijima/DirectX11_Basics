@@ -29,6 +29,10 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="IComponentUIDebugView.h" />
     <ClInclude Include="MeshUIDebugView.h" />
+    <ClInclude Include="LightUIDebugView.h" />
+    <ClInclude Include="ImGuiD3Utils.h" />
+    <ClInclude Include="TankModel.h" />
+    <ClInclude Include="Bullet.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\pch.cpp" />

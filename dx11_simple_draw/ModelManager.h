@@ -2,7 +2,7 @@
 #include <Game.h>
 #include "Model.h"
 
-struct ConstantBuffer {
+struct VsConstantBuffer {
     XMFLOAT4X4 world;
     XMFLOAT4X4 view;
     XMFLOAT4X4 projection;
@@ -14,7 +14,7 @@ public:
     ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
-    std::vector<Model*>* AddModel(string path);
+    std::vector<Model*>* CreateModelFromObj(string path);
 
     //  モデルの削除
     void RemoveModel(int index);
@@ -23,10 +23,10 @@ public:
     Model& GetModel(int index);
 
     //  すべてのモデルの描画
-    void DrawAll(ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer);
+    void DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer);
 
     //  指定したモデルの描画
-    void Draw(int index, ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer);
+    void Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer);
 
     void DrawUIAll();
     void DrawUI(int index);

@@ -167,7 +167,7 @@ ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceCon
     m_deviceContext = &deviceContext;
 }
 
-std::vector<Model*>* ModelManager::AddModel(string path)
+std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
 {
     std::vector<Model*>* models = new std::vector<Model*>();
     LoadModel(models, path);
@@ -242,16 +242,16 @@ Model& ModelManager::GetModel(int index)
     return *model;
 }
 
-void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer)
+void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     int i = 0;
     for (Model* model : m_models) {
-        Draw(i, deviceContext, constantBufferDisc, constantBuffer);
+        Draw(i, deviceContext, vsConstantBufferDisc, vsConstantBuffer);
         i++;
     }
 }
 
-void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer)
+void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     Model* model = m_models[index];
     if (model == nullptr) {
@@ -259,8 +259,9 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantB
     }
 
     for (Model* model : m_models) {
-        XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
-        deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
+        //  頂点用の定数バッファのワールド座標更新
+        XMStoreFloat4x4(&vsConstantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
+        deviceContext.UpdateSubresource(&vsConstantBuffer, 0, nullptr, &vsConstantBufferDisc, 0, 0);
 
         //  テクスチャの設定
         if (model->GetTexture(0) != nullptr) {

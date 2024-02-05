@@ -180,6 +180,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Bullet.h" />
     <ClInclude Include="IComponentUIDebugView.h" />
     <ClInclude Include="HitDetection\BaseHitDetection.h" />
     <ClInclude Include="Camera.h" />
@@ -188,11 +189,14 @@
     <ClInclude Include="Common\pch.h" />
     <ClInclude Include="Common\StepTimer.h" />
     <ClInclude Include="HitDetection\HitDetectionDebugView.h" />
+    <ClInclude Include="ImGuiD3Utils.h" />
+    <ClInclude Include="LightUIDebugView.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="MeshUIDebugView.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="ModelManager.h" />
     <ClInclude Include="HitDetection\SphereHitDetection.h" />
+    <ClInclude Include="TankModel.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="TransformUIDebugView.h" />
   </ItemGroup>
