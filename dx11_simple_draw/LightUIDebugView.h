@@ -1,10 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include "Game.h"
-#include "IComponentUIDebugView.h"
+#include "IUIDebugComponent.h"
 #include "ImGuiD3Utils.h"
 
-class LightUIDebugView : public IComponentUIDebugView
+class LightUIDebugView : public IUIDebugComponent
 {
 public:
     LightUIDebugView(PsConstantBuffer& psConstantBuffer) : m_psConstantBuffer(psConstantBuffer){}

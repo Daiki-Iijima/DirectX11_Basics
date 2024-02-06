@@ -1,9 +1,9 @@
 #pragma once
 
-#include "IComponentUIDebugView.h"
+#include "IUIDebugComponent.h"
 #include <imgui.h>
 
-class MeshUIDebugView : public IComponentUIDebugView {
+class MeshUIDebugView : public IUIDebugComponent {
 public:
 
     MeshUIDebugView(Mesh& mesh) :m_mesh(mesh) {}

@@ -12,6 +12,7 @@
 #include <imgui_impl_dx11.h>
 #include "LightUIDebugView.h"
 #include "TankModel.h"
+#include "HitDetection/SphereHitDetection.h"
 
 extern void ExitGame() noexcept;
 
@@ -38,8 +39,8 @@ ModelManager* modelManager;
 
 PsConstantBuffer psBufferData;
 
-IComponentUIDebugView* cameraTransformView;
-IComponentUIDebugView* lightTransformView;
+IUIDebugComponent* cameraTransformView;
+IUIDebugComponent* lightTransformView;
 
 TankModel* tankModel;
 

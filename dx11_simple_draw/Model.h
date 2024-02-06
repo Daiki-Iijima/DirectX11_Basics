@@ -3,7 +3,7 @@
 #include <DirectXMath.h>
 #include "Transform.h"
 #include "TransformUIDebugView.h"
-#include "HitDetection/BaseHitDetection.h"
+#include "IComponent.h"
 #include "Mesh.h"
 #include "MeshUIDebugView.h"
 
@@ -15,7 +15,7 @@ class Model
 public:
     Model();
     Model(std::string name);
-    Model(std::string name, Transform transform, BaseHitDetection* hitDetection);
+    Model(std::string name, Transform transform, std::vector<IComponent*>* components);
 
     //  Getter
     Transform& GetTransform() {
@@ -30,12 +30,8 @@ public:
         return m_textureViews.size();
     }
 
-    vector<IComponentUIDebugView*>& GetComponentUIDebugViews() {
+    vector<IUIDebugComponent*>& GetComponentUIDebugViews() {
         return m_componentViews;
-    }
-
-    BaseHitDetection* GetHitDetection() {
-        return m_hitDetection;
     }
 
     std::string GetName() {
@@ -51,12 +47,16 @@ public:
         m_textureViews.push_back(textureView);
     }
 
-    void SetHitDetection(BaseHitDetection* hitDetection) {
-        m_hitDetection = hitDetection;
-    }
-
     void SetName(std::string name) {
         m_name = name;
+    }
+
+    void AddComponent(IComponent* component) {
+        m_components->push_back(component);
+    }
+
+    std::vector<IComponent*>* GetComponents() {
+        return m_components;
     }
 
 private:
@@ -66,7 +66,7 @@ private:
     Transform m_transform;
     Mesh m_pMesh;
 
-    std::vector<IComponentUIDebugView*> m_componentViews;
+    std::vector<IUIDebugComponent*> m_componentViews;
 
     //  親子関係
     Model* m_pParent;               //  親
@@ -75,6 +75,6 @@ private:
     //  テクスチャ
     std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;
 
-    //  当たり判定
-    BaseHitDetection* m_hitDetection;
+    //  このモデルに紐づいているコンポーネント
+    std::vector<IComponent*>* m_components;
 };

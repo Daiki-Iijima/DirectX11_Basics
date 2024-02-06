@@ -1,9 +1,9 @@
 #pragma once
 #include "Transform.h"
-#include "IComponentUIDebugView.h"
+#include "IUIDebugComponent.h"
 #include "ImGuiD3Utils.h"
 
-class TransformUIDebugView : public IComponentUIDebugView {
+class TransformUIDebugView : public IUIDebugComponent {
 public:
     TransformUIDebugView(Transform& transform) :m_transform(transform), m_isScaleUniform(false) {}
 

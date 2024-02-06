@@ -2,19 +2,29 @@
 
 #include <vector>
 #include <functional>
+#include "IComponent.h"
+#include "ModelManager.h"
 
 using namespace std;
 
 //  zŠÂQÆ‘Îô
 class Model;
 
-class BaseHitDetection
+class BaseHitDetection : public IComponent
 {
 public:
-    BaseHitDetection(Model* model);
+    BaseHitDetection(Model* model,ModelManager* modelManager);
+
+    void Update() override {
+        HitCheck(m_modelManager->GetAllModels());
+    }
+
+    void Render() override {
+
+    }
 
     //  “–‚½‚è”»’è
-    virtual void HitCheck(vector<BaseHitDetection*> targetHitDetections) = 0;
+    virtual void HitCheck(vector<Model*>& allModels) = 0;
 
     //  Getter
     Model* GetModel() {
@@ -33,6 +43,8 @@ public:
     }
 
 protected:
+    ModelManager* m_modelManager;
+
     //  ‚±‚Ì“–‚½‚è”»’è‚ğ‚Á‚Ä‚¢‚éƒ‚ƒfƒ‹
     Model* m_model;
 

@@ -99,7 +99,6 @@ private:
     std::vector<Model*>* m_tankModels;
     //  ƒJƒƒ‰
     Camera* m_camera;
-    //  ƒJƒƒ‰
 
     float m_moveSpeed = 1.0f;
     float m_rotateSpeed = 45.0f;

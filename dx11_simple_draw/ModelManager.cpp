@@ -167,40 +167,36 @@ ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceCon
     m_deviceContext = &deviceContext;
 }
 
+void ModelManager::AddComponent(IComponent* component) {
+    ////  当たり判定の生成
+    //SphereHitDetection* hitDetection = new SphereHitDetection(model);
+
+    //// 当たり判定開始時のコールバックを設定
+    //hitDetection->SetOnHitStart([](BaseHitDetection* other) {
+    //    OutputDebugStringW(L"当たり判定開始\n");
+    //    });
+
+    //// 当たり判定持続中のコールバックを設定
+    //hitDetection->SetOnHitStay([](BaseHitDetection* other) {
+    //    });
+
+    //// 当たり判定終了時のコールバックを設定
+    //hitDetection->SetOnHitExit([](BaseHitDetection* other) {
+    //    OutputDebugStringW(L"当たり判定終了\n");
+    //    });
+
+    //model->SetHitDetection(hitDetection);
+}
+
 std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
 {
     std::vector<Model*>* models = new std::vector<Model*>();
     LoadModel(models, path);
 
     for(Model* model : *models){
-        //  当たり判定の生成
-        SphereHitDetection* hitDetection = new SphereHitDetection(model);
 
-        // 当たり判定開始時のコールバックを設定
-        hitDetection->SetOnHitStart([](BaseHitDetection* other) {
-            OutputDebugStringW(L"当たり判定開始\n");
-            });
-
-        // 当たり判定持続中のコールバックを設定
-        hitDetection->SetOnHitStay([](BaseHitDetection* other) {
-            });
-
-        // 当たり判定終了時のコールバックを設定
-        hitDetection->SetOnHitExit([](BaseHitDetection* other) {
-            OutputDebugStringW(L"当たり判定終了\n");
-            });
-
-        model->SetHitDetection(hitDetection);
         model->GetMesh().CreateBuffer(*m_device);
 
-        //  当たり判定を持っているオブジェクトの当たり判定を収集
-        m_hitDetections = std::vector<BaseHitDetection*>();
-        for (Model* model : m_models) {
-            BaseHitDetection* hitDetection = model->GetHitDetection();
-            if (hitDetection != nullptr) {
-                m_hitDetections.push_back(hitDetection);
-            }
-        }
         m_models.push_back(model);
     };
 
@@ -222,7 +218,7 @@ void ModelManager::DrawUI(int index) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
     if (ImGui::CollapsingHeader(model->GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (IComponentUIDebugView* componentView : model->GetComponentUIDebugViews()) {
+        for (IUIDebugComponent* componentView : model->GetComponentUIDebugViews()) {
             componentView->ComponentUIRender();
         }
     }
@@ -230,6 +226,11 @@ void ModelManager::DrawUI(int index) {
 
 void ModelManager::RemoveModel(int index)
 {
+}
+
+std::vector<Model*>& ModelManager::GetAllModels()
+{
+    return m_models;
 }
 
 Model& ModelManager::GetModel(int index)
@@ -286,15 +287,7 @@ void ModelManager::UpdateAll()
 void ModelManager::Update(int index)
 {
     Model* model = m_models[index];
-    BaseHitDetection* hitDitection = model->GetHitDetection();
-    if (hitDitection != nullptr && m_hitDetections.size() >= 2) {
-        hitDitection->HitCheck(m_hitDetections);
-    }
-
-    //DirectX::XMVECTOR rot = model->GetTransform().GetDegressRotation();
-    //float y = XMVectorGetY(rot);
-    //float x = XMVectorGetX(rot);
-    //y += 1.f;
-    //x += 1.f;
-    //model->GetTransform().SetDegressRotation(x,y,0);
+    for(IComponent* component : *model->GetComponents()) {
+        component->Update();
+    };
 }

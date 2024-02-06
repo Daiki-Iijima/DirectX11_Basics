@@ -14,10 +14,10 @@ struct BoundingSphere {
 class SphereHitDetection : public BaseHitDetection
 {
 public:
-    SphereHitDetection(Model* model);
+    SphereHitDetection(Model* model,ModelManager* modelManager);
 
     //  “–‚½‚è”»’è
-    void HitCheck(vector<BaseHitDetection*> targetHitDetections) override;
+    void HitCheck(vector<Model*>& allModels) override;
 
     BoundingSphere GetBoundingSphere();
 

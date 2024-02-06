@@ -2,7 +2,7 @@
 #include "HitDetection/SphereHitDetection.h"
 #include "Model.h"
 
-SphereHitDetection::SphereHitDetection(Model* model) :BaseHitDetection(model), m_radius(1.f) {
+SphereHitDetection::SphereHitDetection(Model* model, ModelManager* modelManager) :BaseHitDetection(model, modelManager), m_radius(1.f) {
     m_hitObjects = vector<BaseHitDetection*>();
 }
 
@@ -34,7 +34,25 @@ float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, c
 
 
 //  当たり判定
-void SphereHitDetection::HitCheck(vector<BaseHitDetection*> targetHitDetections) {
+void SphereHitDetection::HitCheck(vector<Model*>& allModels) {
+
+    std::vector<BaseHitDetection*> hitDetections = std::vector<BaseHitDetection*>();
+
+    //  当たり判定コンポーネントを持っているオブジェクトを抽出
+    for (Model* model : allModels) {
+        std::vector<IComponent*>* components = model->GetComponents();
+        for (IComponent* component : *components) {
+            BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component);
+            if (hitDetection != nullptr) {
+                hitDetections.push_back(hitDetection);
+            }
+        }
+    }
+
+    if (hitDetections.size() == 0) {
+        return;
+    }
+
     //  自分のモデルの原点座標を取得
     BoundingSphere myBoundingSphere = GetBoundingSphere();
 
@@ -42,8 +60,9 @@ void SphereHitDetection::HitCheck(vector<BaseHitDetection*> targetHitDetections)
     vector<BaseHitDetection*> thisFrameHitObjects = vector<BaseHitDetection*>();
 
     //  自分のモデルの中心座標と半径を使って球を作成
-    for (BaseHitDetection* targetHitDetection : targetHitDetections) {
+    for (BaseHitDetection* targetHitDetection : hitDetections) {
 
+        //  当たり判定の種類が違う場合は処理をスキップ
         SphereHitDetection* targetSphereHitDetection = dynamic_cast<SphereHitDetection*>(targetHitDetection);
         if (targetSphereHitDetection == nullptr) {
             OutputDebugStringW(L"ヒット判定処理が別のものです\n");

@@ -181,7 +181,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Bullet.h" />
-    <ClInclude Include="IComponentUIDebugView.h" />
+    <ClInclude Include="IComponent.h" />
+    <ClInclude Include="IUIDebugComponent.h" />
     <ClInclude Include="HitDetection\BaseHitDetection.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Common\DeviceResources.h" />

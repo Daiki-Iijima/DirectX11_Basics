@@ -19,6 +19,10 @@ public:
     //  モデルの削除
     void RemoveModel(int index);
 
+
+    //  モデルの数
+    std::vector<Model*>& GetAllModels();
+
     //  モデルの取得
     Model& GetModel(int index);
 
@@ -37,6 +41,8 @@ public:
     //  指定したモデルの更新
     void Update(int index);
 
+    void AddComponent(IComponent* component);
+
     //  モデルの数
     int GetModelCount() const {
         return m_models.size();
@@ -52,7 +58,4 @@ private:
     //  デバイス
     ID3D11Device1* m_device;
     ID3D11DeviceContext* m_deviceContext;
-
-    //  当たり判定のリスト
-    std::vector<BaseHitDetection*> m_hitDetections;
 };
