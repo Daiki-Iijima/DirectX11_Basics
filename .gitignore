@@ -397,3 +397,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 dx11_simple_draw/imgui.ini
+
+# モデルは除外
+!dx11_simple_draw/Models/*
