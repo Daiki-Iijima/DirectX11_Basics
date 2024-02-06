@@ -1,4 +1,4 @@
-cbuffer ConstantBuffer
+cbuffer ConstantBuffer : register(b0)
 {
     float4x4 World;
     float4x4 View;

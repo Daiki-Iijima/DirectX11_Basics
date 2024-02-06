@@ -2,7 +2,7 @@
 #include <Game.h>
 #include "Model.h"
 
-struct ConstantBuffer {
+struct VsConstantBuffer {
     XMFLOAT4X4 world;
     XMFLOAT4X4 view;
     XMFLOAT4X4 projection;
@@ -14,25 +14,34 @@ public:
     ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
-    Model* AddModel(string path);
+    std::vector<Model*>* CreateModelFromObj(string path);
 
     //  モデルの削除
     void RemoveModel(int index);
+
+
+    //  モデルの数
+    std::vector<Model*>& GetAllModels();
 
     //  モデルの取得
     Model& GetModel(int index);
 
     //  すべてのモデルの描画
-    void DrawAll(ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer);
+    void DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer);
 
     //  指定したモデルの描画
-    void Draw(int index, ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer);
+    void Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer);
+
+    void DrawUIAll();
+    void DrawUI(int index);
 
     //  すべてのモデルの更新
     void UpdateAll();
 
     //  指定したモデルの更新
     void Update(int index);
+
+    void AddComponent(IComponent* component);
 
     //  モデルの数
     int GetModelCount() const {
@@ -44,7 +53,7 @@ private:
     std::vector<Model*> m_models;
 
     //  モデルの読み込み
-    void LoadModel(Model& model, string path);
+    void LoadModel(std::vector<Model*>* models, string modelPath);
 
     //  デバイス
     ID3D11Device1* m_device;

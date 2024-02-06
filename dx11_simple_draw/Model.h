@@ -2,59 +2,79 @@
 
 #include <DirectXMath.h>
 #include "Transform.h"
+#include "TransformUIDebugView.h"
+#include "IComponent.h"
+#include "Mesh.h"
+#include "MeshUIDebugView.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
-
-struct Vertex {
-    XMFLOAT3 position;
-    XMFLOAT3 normal;
-    XMFLOAT2 texcoord;
-};
 
 class Model
 {
 public:
     Model();
-    Model(Transform transform);
-
-    //  インデックスバッファの数
-    int IndiceCount;
-
-    //  === CPUメモリ ===
-    //  VertexBufferの生成ができたら解放してもいい気がする
-    std::vector<Vertex> vertices;
-    std::vector<unsigned short> indices;
-
-    //  === GPUメモリ ===
-    ComPtr<ID3D11Buffer> vertexBuffer;
-    ComPtr<ID3D11Buffer> indexBuffer;
-
-    //  Bufferの生成
-    HRESULT CreateBuffers(ID3D11Device& device);
+    Model(std::string name);
+    Model(std::string name, Transform transform, std::vector<IComponent*>* components);
 
     //  Getter
     Transform& GetTransform() {
         return m_transform;
     }
 
-    //  Setter
-    void SetTexture(ID3D11ShaderResourceView* textureView) {
-        m_textureView = textureView;
+    ID3D11ShaderResourceView* GetTexture(int index) {
+        return m_textureViews[index].Get();
     }
 
-    //  Getter
-    ID3D11ShaderResourceView* GetTexture()  {
-        return m_textureView.Get();
+    int GetTextureCount() {
+        return m_textureViews.size();
+    }
+
+    vector<IUIDebugComponent*>& GetComponentUIDebugViews() {
+        return m_componentViews;
+    }
+
+    std::string GetName() {
+        return m_name;
+    }
+
+    Mesh& GetMesh() {
+        return m_pMesh;
+    }
+
+    //  Setter
+    void AddTexture(ID3D11ShaderResourceView* textureView) {
+        m_textureViews.push_back(textureView);
+    }
+
+    void SetName(std::string name) {
+        m_name = name;
+    }
+
+    void AddComponent(IComponent* component) {
+        m_components->push_back(component);
+    }
+
+    std::vector<IComponent*>* GetComponents() {
+        return m_components;
     }
 
 private:
-    //  Bufferの生成
-    HRESULT CreateVertexBuffer(ID3D11Device& device);
-    HRESULT CreateIndexBuffer(ID3D11Device& device);
+    //  モデル名(表示に使う)
+    std::string m_name;
 
     Transform m_transform;
+    Mesh m_pMesh;
+
+    std::vector<IUIDebugComponent*> m_componentViews;
+
+    //  親子関係
+    Model* m_pParent;               //  親
+    std::vector<Model*> m_pChilds;  //  子
 
     //  テクスチャ
-    ComPtr<ID3D11ShaderResourceView> m_textureView;
+    std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;
+
+    //  このモデルに紐づいているコンポーネント
+    std::vector<IComponent*>* m_components;
 };

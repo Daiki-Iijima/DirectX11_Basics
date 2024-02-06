@@ -3,6 +3,8 @@
 
 #pragma comment(lib, "DirectXTex.lib")
 #include <DirectXTex.h>
+#include "HitDetection/SphereHitDetection.h"
+#include "HitDetection/HitDetectionDebugView.h"
 
 using namespace DirectX;
 
@@ -17,7 +19,30 @@ HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context
     return hr;
 }
 
-void ModelManager::LoadModel(Model& distModel, string modelPath) {
+void CreateTexture(ID3D11Device* device,aiColor3D diffuseColor, ID3D11ShaderResourceView** textureView) {
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    texDesc.Width = 1;
+    texDesc.Height = 1;
+    texDesc.MipLevels = 1;
+    texDesc.ArraySize = 1;
+    texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.Usage = D3D11_USAGE_DEFAULT;
+    texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA initData = {};
+    unsigned int color = (255 << 24) | ((int)(diffuseColor.b * 255) << 16) | ((int)(diffuseColor.g * 255) << 8) | (int)(diffuseColor.r * 255);
+    initData.pSysMem = &color;
+    initData.SysMemPitch = sizeof(unsigned int);
+
+    ID3D11Texture2D* generateTexture = nullptr;
+    device->CreateTexture2D(&texDesc, &initData, &generateTexture);
+
+    device->CreateShaderResourceView(generateTexture, nullptr, textureView);
+    generateTexture->Release();
+}
+
+void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
     //  モデルの読み込み
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
@@ -34,9 +59,16 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
         OutputDebugString(errorWStr.c_str());
     }
 
-
+    //  メッシュの読み込み
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
+
+        Model* model = new Model();
+        models->push_back(model);
+        Mesh meshComponent = model->GetMesh();
+        
+        //  名前の設定
+        model->SetName(mesh->mName.C_Str());
 
         // 頂点情報の抽出
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -56,21 +88,32 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
                 vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
             }
 
-            distModel.vertices.push_back(vertex);
+            meshComponent.GetVertices()->push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                distModel.indices.push_back(static_cast<unsigned short>(face.mIndices[j]));
+                meshComponent.GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
 
         //  マテリアル情報の抽出
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
+        //  テクスチャの読み込み
         for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
+            // モデルパスからディレクトリを抽出
+            std::string modelDirectory = modelPath;
+            size_t lastSlashPos = modelDirectory.find_last_of("/\\");
+            if (lastSlashPos != std::string::npos) {
+                modelDirectory = modelDirectory.substr(0, lastSlashPos + 1);
+            }
+            else {
+                modelDirectory = ""; // ディレクトリが見つからない場合、カレントディレクトリを使用
+            }
+
             aiString str;
             material->GetTexture(aiTextureType_DIFFUSE, i, &str);
             //  テクスチャの読み込み
@@ -82,19 +125,41 @@ void ModelManager::LoadModel(Model& distModel, string modelPath) {
             ID3D11ShaderResourceView* textureView = nullptr;
 
             //  パスを正式なパスに変換
-            path = L"Models/Cube/" + path;
+            // std::string型のmodelDirectoryをstd::wstringに変換
+            std::wstring wModelDirectory(modelDirectory.begin(), modelDirectory.end());
+
+            // パスの結合
+            std::wstring fullPath = wModelDirectory + std::wstring(str.C_Str(), str.C_Str() + str.length);
+
+            // デバッグ出力
+            OutputDebugString(fullPath.c_str());
 
             //  テクスチャの生成
-            CreateTextureFromPath(m_device,m_deviceContext,path,&textureView);
+            CreateTextureFromPath(m_device,m_deviceContext,fullPath,&textureView);
 
             //  モデルクラスに保存
-            distModel.SetTexture(textureView);
+            model->AddTexture(textureView);
+        }
+
+        if (model->GetTextureCount() <= m) {
+            //  テクスチャがない場合は白色のテクスチャを生成
+            ID3D11ShaderResourceView* textureView = nullptr;
+            aiColor3D color(0.f, 0.f, 0.f);
+            //  色が取得できた場合はその色をテクスチャにする
+            if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
+                CreateTexture(m_device, color, &textureView);
+            }
+            //  色が取得できなかった場合は白色
+            else {
+                CreateTexture(m_device, color, &textureView);
+            }
+            model->AddTexture(textureView);
         }
     }
 }
 
 
-ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceContext)
+ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext)
 {
     m_models = std::vector<Model*>();
 
@@ -102,17 +167,70 @@ ModelManager::ModelManager(ID3D11Device1& device,ID3D11DeviceContext& deviceCont
     m_deviceContext = &deviceContext;
 }
 
-Model* ModelManager::AddModel(string path)
+void ModelManager::AddComponent(IComponent* component) {
+    ////  当たり判定の生成
+    //SphereHitDetection* hitDetection = new SphereHitDetection(model);
+
+    //// 当たり判定開始時のコールバックを設定
+    //hitDetection->SetOnHitStart([](BaseHitDetection* other) {
+    //    OutputDebugStringW(L"当たり判定開始\n");
+    //    });
+
+    //// 当たり判定持続中のコールバックを設定
+    //hitDetection->SetOnHitStay([](BaseHitDetection* other) {
+    //    });
+
+    //// 当たり判定終了時のコールバックを設定
+    //hitDetection->SetOnHitExit([](BaseHitDetection* other) {
+    //    OutputDebugStringW(L"当たり判定終了\n");
+    //    });
+
+    //model->SetHitDetection(hitDetection);
+}
+
+std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
 {
-    Model* model = new Model();
-    LoadModel(*model, path);
-    model->CreateBuffers(*m_device);
-    m_models.push_back(model);
-    return model;
+    std::vector<Model*>* models = new std::vector<Model*>();
+    LoadModel(models, path);
+
+    for(Model* model : *models){
+
+        model->GetMesh().CreateBuffer(*m_device);
+
+        m_models.push_back(model);
+    };
+
+    return models;
+}
+
+void ModelManager::DrawUIAll()
+{
+    int i = 0;
+    for (Model* model : m_models) {
+        DrawUI(i);
+        i++;
+    }
+}
+
+void ModelManager::DrawUI(int index) {
+    Model* model = m_models[index];
+    if (model == nullptr) {
+        throw std::exception("ModelManager::GetModel() : model is nullptr.");
+    }
+    if (ImGui::CollapsingHeader(model->GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (IUIDebugComponent* componentView : model->GetComponentUIDebugViews()) {
+            componentView->ComponentUIRender();
+        }
+    }
 }
 
 void ModelManager::RemoveModel(int index)
 {
+}
+
+std::vector<Model*>& ModelManager::GetAllModels()
+{
+    return m_models;
 }
 
 Model& ModelManager::GetModel(int index)
@@ -125,54 +243,51 @@ Model& ModelManager::GetModel(int index)
     return *model;
 }
 
-void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer)
+void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     int i = 0;
     for (Model* model : m_models) {
-        Draw(i, deviceContext, constantBufferDisc, constantBuffer);
+        Draw(i, deviceContext, vsConstantBufferDisc, vsConstantBuffer);
         i++;
     }
 }
 
-void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, ConstantBuffer& constantBufferDisc, ID3D11Buffer& constantBuffer)
+void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     Model* model = m_models[index];
     if (model == nullptr) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
-    DirectX::XMVECTOR rot = model->GetTransform().GetDegressRotation();
-    float y = XMVectorGetY(rot);
-    float x = XMVectorGetX(rot);
-    y += 1.f;
-    x += 1.f;
-    model->GetTransform().SetDegressRotation(x,y,0);
+    for (Model* model : m_models) {
+        //  頂点用の定数バッファのワールド座標更新
+        XMStoreFloat4x4(&vsConstantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
+        deviceContext.UpdateSubresource(&vsConstantBuffer, 0, nullptr, &vsConstantBufferDisc, 0, 0);
 
-    XMStoreFloat4x4(&constantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
-    deviceContext.UpdateSubresource(&constantBuffer, 0, nullptr, &constantBufferDisc, 0, 0);
+        //  テクスチャの設定
+        if (model->GetTexture(0) != nullptr) {
+            ID3D11ShaderResourceView* textureView = model->GetTexture(0);
+            ID3D11ShaderResourceView* views[] = { textureView };
+            deviceContext.PSSetShaderResources(0, 1, views);
+        }
 
-    //  とりあえず受け取る
-    UINT stride = sizeof(Vertex);
-    UINT offset = 0;
-
-    deviceContext.IASetVertexBuffers(0, 1, model->vertexBuffer.GetAddressOf(), &stride, &offset);
-    deviceContext.IASetIndexBuffer(model->indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-    deviceContext.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    //  テクスチャの設定
-    if (model->GetTexture() != nullptr) {
-        ID3D11ShaderResourceView* textureView = model->GetTexture();
-        ID3D11ShaderResourceView* views[] = { textureView };
-        deviceContext.PSSetShaderResources(0, 1, views);
+        model->GetMesh().Draw(deviceContext);
     }
-
-    deviceContext.DrawIndexed(model->IndiceCount, 0, 0);
 }
 
 void ModelManager::UpdateAll()
 {
+    int i = 0;
+    for (Model* model : m_models) {
+        Update(i);
+        i++;
+    }
 }
 
 void ModelManager::Update(int index)
 {
+    Model* model = m_models[index];
+    for(IComponent* component : *model->GetComponents()) {
+        component->Update();
+    };
 }

@@ -25,6 +25,15 @@
 #include "ModelManager.h"
 #include "Model.h"
 
+//  ピクセルシェーダーの定数バッファ
+struct PsConstantBuffer
+{
+    DirectX::XMFLOAT3 LightDirection;
+    float padding1;                   // 4バイトのパディング
+    DirectX::XMFLOAT3 LightColor;
+    float LightIntensity;
+};
+
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
 class Game final : public DX::IDeviceNotify
