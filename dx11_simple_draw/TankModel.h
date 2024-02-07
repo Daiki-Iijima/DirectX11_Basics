@@ -73,19 +73,15 @@ public:
                 hitWall = true; // 壁に当たった
                 if (DirectX::XMVectorGetX(position) > 15) {
                     normalVector = DirectX::XMVectorSet(-1, 0, 0, 0); // 右の壁
-                    OutputDebugString(L"右の壁\n");
                 }
                 else if (DirectX::XMVectorGetX(position) < -15) {
                     normalVector = DirectX::XMVectorSet(1, 0, 0, 0); // 左の壁
-                    OutputDebugString(L"左の壁\n");
                 }
                 else if (DirectX::XMVectorGetZ(position) > 15) {
                     normalVector = DirectX::XMVectorSet(0, 0, -1, 0); // 前の壁
-                    OutputDebugString(L"前の壁\n");
                 }
                 else if (DirectX::XMVectorGetZ(position) < -15) {
                     normalVector = DirectX::XMVectorSet(0, 0, 1, 0); // 後ろの壁
-                    OutputDebugString(L"後ろの壁\n");
                 }
 
                 // 壁に当たった場合、反射ベクトルを計算して新しい方向とする
@@ -124,21 +120,24 @@ public:
         if (isSpaceKeyDown && !wasSpaceKeyDown) {
             Model* bulletModel = m_pModelManager->CreateModelFromObj("Models/Bullet.obj")->at(0);
 
-            //  弾の当たり判定の追加
-            //  この当たり判定は、壁には利かない
-            //  同じSphereHitDetectionを持っているモデルにしか当たらない
-            SphereHitDetection* hitDetection = new SphereHitDetection(bulletModel, m_pModelManager);
-            hitDetection->SetOnHitStart([](BaseHitDetection* other) {
-                OutputDebugStringW(L"当たり判定開始\n");
-                });
-            bulletModel->AddComponent(hitDetection);
-
             //  弾の構造体の生成
             Bullet* bullet = new Bullet();
             bullet->model = bulletModel;
             bullet->position = m_worldPosition + forward * 0.75f;    //  タンクの位置の少し前
             bullet->direction = forward;
             m_bullets.push_back(bullet);
+
+            //  弾の当たり判定の追加
+            //  この当たり判定は、壁には利かない
+            //  同じSphereHitDetectionを持っているモデルにしか当たらない
+            SphereHitDetection* hitDetection = new SphereHitDetection(bulletModel, m_pModelManager);
+            hitDetection->SetOnHitStart([this, bullet](BaseHitDetection* other) {
+                m_pModelManager->EraseModel(other->GetModel());
+                auto it = std::find(m_bullets.begin(), m_bullets.end(), bullet);
+                m_bullets.erase(it);
+                delete bullet;
+                });
+            bulletModel->AddComponent(hitDetection);
         }
         // 現在の状態を前回の状態として保持
         wasSpaceKeyDown = isSpaceKeyDown;
