@@ -400,8 +400,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 1920;
-    height = 1080;
+    width = 1720;
+    height = 880;
 }
 #pragma endregion
 
@@ -488,7 +488,7 @@ void Game::CreateDeviceDependentResources()
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
     vector<Model*>* models = modelManager->CreateModelFromObj("Models/TankO.obj");
-    tankModel = new TankModel(models, camera);
+    tankModel = new TankModel(models, camera, modelManager);
     modelManager->CreateModelFromObj("Models/Map.obj");
 
     //  頂点シェーダーを生成する
