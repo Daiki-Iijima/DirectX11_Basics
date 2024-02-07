@@ -181,6 +181,8 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
     camera->GetViewMatrix(view);
 }
 
+float drumCreateTimer = 0.f;
+
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
@@ -199,6 +201,23 @@ void Game::Update(DX::StepTimer const& timer)
 
     //  TankModelの更新
     tankModel->Update(elapsedTime);
+
+    //  定期的にドラムを追加
+    drumCreateTimer += elapsedTime;
+    if (drumCreateTimer > 5.f) {
+        //  ドラムの追加
+        Model* drumModel = modelManager->CreateModelFromObj("Models/Drum.obj")->at(0);
+        //  ランダム座標を生成
+        DirectX::XMVECTOR randomPos = DirectX::XMVectorSet((rand() % 10) - 5.f, 0.f, (rand() % 10) - 5.f, 0.f);
+        drumModel->GetTransform().SetPosition(randomPos);
+        SphereHitDetection* sphereHitDetection = new SphereHitDetection(drumModel, modelManager);
+        sphereHitDetection->SetOnHitStart([drumModel](BaseHitDetection* other) {
+            //  爆発させて消したい
+            modelManager->EraseModel(other->GetModel());
+            });
+        drumModel->AddComponent(sphereHitDetection);
+        drumCreateTimer = 0.f;
+    }
 
     elapsedTime;
 }
@@ -400,8 +419,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 1920;
-    height = 1080;
+    width = 1720;
+    height = 880;
 }
 #pragma endregion
 
@@ -488,7 +507,7 @@ void Game::CreateDeviceDependentResources()
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
     vector<Model*>* models = modelManager->CreateModelFromObj("Models/TankO.obj");
-    tankModel = new TankModel(models, camera);
+    tankModel = new TankModel(models, camera, modelManager);
     modelManager->CreateModelFromObj("Models/Map.obj");
 
     //  頂点シェーダーを生成する

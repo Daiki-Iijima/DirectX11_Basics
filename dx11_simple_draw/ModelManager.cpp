@@ -165,6 +165,7 @@ ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceCon
 
     m_device = &device;
     m_deviceContext = &deviceContext;
+    m_eraseTargetModels = std::vector<Model*>();
 }
 
 void ModelManager::AddComponent(IComponent* component) {
@@ -224,8 +225,10 @@ void ModelManager::DrawUI(int index) {
     }
 }
 
-void ModelManager::RemoveModel(int index)
+void ModelManager::EraseModel(Model* model)
 {
+    //  Ÿ‚ÌƒtƒŒ[ƒ€‚Åíœ‚·‚é
+    m_eraseTargetModels.push_back(model);
 }
 
 std::vector<Model*>& ModelManager::GetAllModels()
@@ -277,6 +280,17 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstan
 
 void ModelManager::UpdateAll()
 {
+    //  íœ‘ÎÛ‚Ìƒ‚ƒfƒ‹‚ğíœ
+    for (Model* model : m_eraseTargetModels) {
+        auto it = std::find(m_models.begin(), m_models.end(), model);
+        if (it != m_models.end()) {
+            m_models.erase(it);
+            delete model;
+            model = nullptr;
+        }
+    }
+    m_eraseTargetModels.clear();
+
     int i = 0;
     for (Model* model : m_models) {
         Update(i);

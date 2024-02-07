@@ -17,8 +17,7 @@ public:
     std::vector<Model*>* CreateModelFromObj(string path);
 
     //  モデルの削除
-    void RemoveModel(int index);
-
+    void EraseModel(Model* model);
 
     //  モデルの数
     std::vector<Model*>& GetAllModels();
@@ -51,6 +50,8 @@ public:
 private:
     //  モデルのリスト
     std::vector<Model*> m_models;
+    //  次のフレームで削除対象のモデルリスト
+    std::vector<Model*> m_eraseTargetModels;
 
     //  モデルの読み込み
     void LoadModel(std::vector<Model*>* models, string modelPath);

@@ -1,6 +1,6 @@
 # Blender 4.0.2
 # www.blender.org
-mtllib Bullt.mtl
+mtllib Bullet.mtl
 o Bullet
 v -0.022668 0.093969 0.027432
 v -0.042602 0.076604 0.051555
