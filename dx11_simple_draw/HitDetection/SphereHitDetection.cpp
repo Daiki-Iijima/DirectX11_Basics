@@ -1,4 +1,5 @@
 #include "Common/pch.h"
+#include "BaseHitDetection.h"
 #include "HitDetection/SphereHitDetection.h"
 #include "Model.h"
 
@@ -11,7 +12,7 @@ BoundingSphere SphereHitDetection::GetBoundingSphere() {
     BoundingSphere boundingSphere;
 
     boundingSphere.center = m_model->GetMesh().GetCenter();
-    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, *m_model->GetMesh().GetVertices());
+    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->GetMesh().GetVertices());
 
     return boundingSphere;
 }
@@ -34,15 +35,15 @@ float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, c
 
 
 //  当たり判定
-void SphereHitDetection::HitCheck(vector<Model*>& allModels) {
+void SphereHitDetection::HitCheck(vector<Model*> allModels) {
 
     std::vector<BaseHitDetection*> hitDetections = std::vector<BaseHitDetection*>();
 
     //  当たり判定コンポーネントを持っているオブジェクトを抽出
     for (Model* model : allModels) {
-        std::vector<IComponent*>* components = model->GetComponents();
-        for (IComponent* component : *components) {
-            BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component);
+        auto components = model->GetComponents();
+        for (auto& component : components) {
+            BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component.get());
             if (hitDetection != nullptr) {
                 hitDetections.push_back(hitDetection);
             }

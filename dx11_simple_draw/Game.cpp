@@ -206,16 +206,16 @@ void Game::Update(DX::StepTimer const& timer)
     drumCreateTimer += elapsedTime;
     if (drumCreateTimer > 5.f) {
         //  ドラムの追加
-        Model* drumModel = modelManager->CreateModelFromObj("Models/Drum.obj")->at(0);
+        auto drumModel = modelManager->CreateModelFromObj("Models/Drum.obj").at(0);
         //  ランダム座標を生成
         DirectX::XMVECTOR randomPos = DirectX::XMVectorSet((rand() % 10) - 5.f, 0.f, (rand() % 10) - 5.f, 0.f);
         drumModel->GetTransform().SetPosition(randomPos);
-        SphereHitDetection* sphereHitDetection = new SphereHitDetection(drumModel, modelManager);
-        sphereHitDetection->SetOnHitStart([drumModel](BaseHitDetection* other) {
+        std::shared_ptr<SphereHitDetection> sphereHitDetection = std::make_shared<SphereHitDetection>(drumModel.get(), modelManager);
+        sphereHitDetection->SetOnHitStart([](BaseHitDetection* other) {
             //  爆発させて消したい
             modelManager->EraseModel(other->GetModel());
             });
-        drumModel->AddComponent(sphereHitDetection);
+        drumModel->AddComponent(std::move(sphereHitDetection));
         drumCreateTimer = 0.f;
     }
 
@@ -323,26 +323,26 @@ void Game::Render()
     //}
 
     // Start the Dear ImGui frame
-    ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
-    ImGui_ImplDX11_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
+    //ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
+    //ImGui_ImplDX11_NewFrame();
+    //ImGui_ImplWin32_NewFrame();
+    //ImGui::NewFrame();
 
-    ImGui::Begin("Properties");
-    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-        cameraTransformView->ComponentUIRender();
-    }
-    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-        lightTransformView->ComponentUIRender();
-    }
-    modelManager->DrawUIAll();
-    ImGui::End();
+    //ImGui::Begin("Properties");
+    //if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+    //    cameraTransformView->ComponentUIRender();
+    //}
+    //if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+    //    lightTransformView->ComponentUIRender();
+    //}
+    //modelManager->DrawUIAll();
+    //ImGui::End();
 
-    // Rendering
-    ImGui::Render();
-    ImDrawData* pDrawData = ImGui::GetDrawData();
-    ImGui_ImplDX11_RenderDrawData(pDrawData);
-
+    //// Rendering
+    //ImGui::Render();
+    //ImDrawData* pDrawData = ImGui::GetDrawData();
+    //ImGui_ImplDX11_RenderDrawData(pDrawData);
+    //ImGui::EndFrame();
 
     // Show the new frame.
     m_deviceResources->Present();
@@ -506,7 +506,7 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    vector<Model*>* models = modelManager->CreateModelFromObj("Models/TankO.obj");
+    auto models = modelManager->CreateModelFromObj("Models/TankO.obj");
     tankModel = new TankModel(models, camera, modelManager);
     modelManager->CreateModelFromObj("Models/Map.obj");
 
@@ -566,15 +566,15 @@ void Game::CreateWindowSizeDependentResources()
 
     m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
 
-    //  ImGuiの初期化
-    if (ImGui::GetCurrentContext() == nullptr) {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        bool result = ImGui_ImplWin32_Init(m_deviceResources->GetWindow());
-        result = ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
+    ////  ImGuiの初期化
+    //if (ImGui::GetCurrentContext() == nullptr) {
+    //    IMGUI_CHECKVERSION();
+    //    ImGui::CreateContext();
+    //    bool result = ImGui_ImplWin32_Init(m_deviceResources->GetWindow());
+    //    result = ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
 
-        ImGui::StyleColorsDark();   //  ダークテーマを使用
-    }
+    //    ImGui::StyleColorsDark();   //  ダークテーマを使用
+    //}
 }
 
 void Game::OnDeviceLost()

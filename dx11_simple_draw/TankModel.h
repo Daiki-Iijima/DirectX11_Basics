@@ -6,13 +6,12 @@
 class TankModel
 {
 public:
-    TankModel(std::vector<Model*>* tankModels,Camera* camera,ModelManager* modelManager) :
-        m_tankModels(tankModels),
+    TankModel(std::vector<std::shared_ptr<Model>> tankModels,Camera* camera,ModelManager* modelManager) :
+        m_tankModels(std::move(tankModels)),
         m_camera(camera),
         m_pModelManager(modelManager),
         m_worldPosition(DirectX::XMVectorSet(0, 0, 0, 0)),
-        m_worldRotation(DirectX::XMVectorSet(0, 0, 0, 0)),
-        m_bullets(std::vector<Bullet*>())
+        m_worldRotation(DirectX::XMVectorSet(0, 0, 0, 0))
     {};
 
     DirectX::XMVECTOR GetForwardVector() {
@@ -26,7 +25,7 @@ public:
     }
 
     void ModelsUpdateTransform(DirectX::XMVECTOR worldPosition,DirectX::XMVECTOR worldRotation) {
-        for (auto model : *m_tankModels) {
+        for (auto model : m_tankModels) {
             model->GetTransform().SetPosition(DirectX::XMVectorSet(
                 DirectX::XMVectorGetX(worldPosition),
                 DirectX::XMVectorGetY(worldPosition),
@@ -118,11 +117,12 @@ public:
         bool isSpaceKeyDown = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
 
         if (isSpaceKeyDown && !wasSpaceKeyDown) {
-            Model* bulletModel = m_pModelManager->CreateModelFromObj("Models/Bullet.obj")->at(0);
+            auto models = m_pModelManager->CreateModelFromObj("Models/Bullet.obj");
+            auto& bulletModel = models.at(0);
 
             //  弾の構造体の生成
-            Bullet* bullet = new Bullet();
-            bullet->model = bulletModel;
+            auto bullet = std::make_shared<Bullet>();
+            bullet->model = bulletModel.get();
             bullet->position = m_worldPosition + forward * 0.75f;    //  タンクの位置の少し前
             bullet->direction = forward;
             m_bullets.push_back(bullet);
@@ -130,14 +130,13 @@ public:
             //  弾の当たり判定の追加
             //  この当たり判定は、壁には利かない
             //  同じSphereHitDetectionを持っているモデルにしか当たらない
-            SphereHitDetection* hitDetection = new SphereHitDetection(bulletModel, m_pModelManager);
+            auto hitDetection = std::make_shared<SphereHitDetection>(bulletModel.get(), m_pModelManager);
             hitDetection->SetOnHitStart([this, bullet](BaseHitDetection* other) {
                 m_pModelManager->EraseModel(other->GetModel());
                 auto it = std::find(m_bullets.begin(), m_bullets.end(), bullet);
                 m_bullets.erase(it);
-                delete bullet;
                 });
-            bulletModel->AddComponent(hitDetection);
+            bulletModel->AddComponent(std::move(hitDetection));
         }
         // 現在の状態を前回の状態として保持
         wasSpaceKeyDown = isSpaceKeyDown;
@@ -154,7 +153,7 @@ private:
     DirectX::XMVECTOR m_worldRotation;
 
     //  タンクのモデル(複数)
-    std::vector<Model*>* m_tankModels;
+    std::vector<std::shared_ptr<Model>> m_tankModels;
     //  カメラ
     Camera* m_camera;
 
@@ -167,7 +166,7 @@ private:
         DirectX::XMVECTOR position;
     };
     //  生成した弾のリスト
-    std::vector<Bullet*> m_bullets;
+    std::vector<std::shared_ptr<Bullet>> m_bullets;
 
     float m_moveSpeed = 1.0f;
     float m_rotateSpeed = 45.0f;

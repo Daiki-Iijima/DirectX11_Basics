@@ -17,7 +17,7 @@ public:
     SphereHitDetection(Model* model,ModelManager* modelManager);
 
     //  “–‚½‚è”»’è
-    void HitCheck(vector<Model*>& allModels) override;
+    void HitCheck(vector<Model*> allModels) override;
 
     BoundingSphere GetBoundingSphere();
 

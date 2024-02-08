@@ -16,6 +16,7 @@ HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context
     }
 
     hr = DirectX::CreateShaderResourceView(device, scratchImage.GetImages(), scratchImage.GetImageCount(), scratchImage.GetMetadata(), textureView);
+
     return hr;
 }
 
@@ -42,7 +43,7 @@ void CreateTexture(ID3D11Device* device,aiColor3D diffuseColor, ID3D11ShaderReso
     generateTexture->Release();
 }
 
-void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
+void ModelManager::LoadModel(std::vector<std::shared_ptr<Model>>* models, string modelPath) {
     //  モデルの読み込み
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
@@ -63,9 +64,8 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
 
-        Model* model = new Model();
-        models->push_back(model);
-        Mesh meshComponent = model->GetMesh();
+        auto model = std::make_shared<Model>();
+        Mesh& meshComponent = model->GetMesh();
         
         //  名前の設定
         model->SetName(mesh->mName.C_Str());
@@ -88,14 +88,14 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
                 vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
             }
 
-            meshComponent.GetVertices()->push_back(vertex);
+            meshComponent.GetVertices().push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                meshComponent.GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
+                meshComponent.GetIndices().push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
 
@@ -155,17 +155,22 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             }
             model->AddTexture(textureView);
         }
+
+        material->Clear();
+
+        models->push_back(std::move(model));
     }
+
+
+
+    importer.FreeScene();
 }
 
 
 ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext)
 {
-    m_models = std::vector<Model*>();
-
     m_device = &device;
     m_deviceContext = &deviceContext;
-    m_eraseTargetModels = std::vector<Model*>();
 }
 
 void ModelManager::AddComponent(IComponent* component) {
@@ -189,15 +194,16 @@ void ModelManager::AddComponent(IComponent* component) {
     //model->SetHitDetection(hitDetection);
 }
 
-std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
+std::vector<std::shared_ptr<Model>> ModelManager::CreateModelFromObj(string path)
 {
-    std::vector<Model*>* models = new std::vector<Model*>();
-    LoadModel(models, path);
+    //  生成したモデルのリスト
+    std::vector<std::shared_ptr<Model>> models;
+    
+    LoadModel(&models, path);
 
-    for(Model* model : *models){
+    for(auto& model : models) {
 
         model->GetMesh().CreateBuffer(*m_device);
-
         m_models.push_back(model);
     };
 
@@ -207,14 +213,14 @@ std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
 void ModelManager::DrawUIAll()
 {
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto&  model : m_models) {
         DrawUI(i);
         i++;
     }
 }
 
 void ModelManager::DrawUI(int index) {
-    Model* model = m_models[index];
+    auto& model = m_models[index];
     if (model == nullptr) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
@@ -225,31 +231,31 @@ void ModelManager::DrawUI(int index) {
     }
 }
 
-void ModelManager::EraseModel(Model* model)
+void ModelManager::EraseModel(Model* targetModel)
 {
-    //  次のフレームで削除する
-    m_eraseTargetModels.push_back(model);
+    m_deleteModels.push_back(targetModel);
 }
 
-std::vector<Model*>& ModelManager::GetAllModels()
-{
-    return m_models;
+std::vector<Model*> ModelManager::GetAllModels() {
+    std::vector<Model*> modelsRawPointers;
+    for (auto& modelPtr : m_models) {
+        modelsRawPointers.push_back(modelPtr.get()); // std::unique_ptrから生ポインタを取得
+    }
+    return modelsRawPointers;
 }
 
 Model& ModelManager::GetModel(int index)
 {
-    Model* model = m_models[index];
-    if (model == nullptr) {
-        throw std::exception("ModelManager::GetModel() : model is nullptr.");
+    if (index < 0 || index >= static_cast<int>(m_models.size())) {
+        throw std::out_of_range("ModelManager::GetModel() : index is out of range.");
     }
-
-    return *model;
+    return *m_models[index];
 }
 
 void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         Draw(i, deviceContext, vsConstantBufferDisc, vsConstantBuffer);
         i++;
     }
@@ -257,12 +263,12 @@ void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer&
 
 void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
-    Model* model = m_models[index];
+    auto& model = m_models[index];
     if (model == nullptr) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         //  頂点用の定数バッファのワールド座標更新
         XMStoreFloat4x4(&vsConstantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
         deviceContext.UpdateSubresource(&vsConstantBuffer, 0, nullptr, &vsConstantBufferDisc, 0, 0);
@@ -280,19 +286,14 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstan
 
 void ModelManager::UpdateAll()
 {
-    //  削除対象のモデルを削除
-    for (Model* model : m_eraseTargetModels) {
-        auto it = std::find(m_models.begin(), m_models.end(), model);
-        if (it != m_models.end()) {
-            m_models.erase(it);
-            delete model;
-            model = nullptr;
-        }
+    //  削除リストの削除
+    for (auto& model : m_deleteModels) {
+        m_models.erase(std::remove_if(m_models.begin(), m_models.end(), [model](std::shared_ptr<Model> m) { return m.get() == model; }), m_models.end());
     }
-    m_eraseTargetModels.clear();
+    m_deleteModels.clear();
 
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         Update(i);
         i++;
     }
@@ -300,8 +301,8 @@ void ModelManager::UpdateAll()
 
 void ModelManager::Update(int index)
 {
-    Model* model = m_models[index];
-    for(IComponent* component : *model->GetComponents()) {
+    auto& model = m_models[index];
+    for(std::shared_ptr<IComponent>& component : model->GetComponents()) {
         component->Update();
     };
 }

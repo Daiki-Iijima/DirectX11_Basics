@@ -14,13 +14,13 @@ public:
     ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext);
 
     //  モデルの追加
-    std::vector<Model*>* CreateModelFromObj(string path);
+    std::vector<std::shared_ptr<Model>> CreateModelFromObj(string path);
 
     //  モデルの削除
     void EraseModel(Model* model);
 
     //  モデルの数
-    std::vector<Model*>& GetAllModels();
+    std::vector<Model*> GetAllModels();
 
     //  モデルの取得
     Model& GetModel(int index);
@@ -49,12 +49,11 @@ public:
 
 private:
     //  モデルのリスト
-    std::vector<Model*> m_models;
-    //  次のフレームで削除対象のモデルリスト
-    std::vector<Model*> m_eraseTargetModels;
+    std::vector<std::shared_ptr<Model>> m_models;
+    std::vector<Model*> m_deleteModels;
 
     //  モデルの読み込み
-    void LoadModel(std::vector<Model*>* models, string modelPath);
+    void LoadModel(std::vector<std::shared_ptr<Model>>* models, string modelPath);
 
     //  デバイス
     ID3D11Device1* m_device;

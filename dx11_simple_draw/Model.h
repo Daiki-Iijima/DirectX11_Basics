@@ -15,7 +15,8 @@ class Model
 public:
     Model();
     Model(std::string name);
-    Model(std::string name, Transform transform, std::vector<IComponent*>* components);
+    Model(std::string name, Transform transform);
+    ~Model();
 
     //  Getter
     Transform& GetTransform() {
@@ -39,7 +40,7 @@ public:
     }
 
     Mesh& GetMesh() {
-        return m_pMesh;
+        return m_mesh;
     }
 
     //  Setter
@@ -51,11 +52,11 @@ public:
         m_name = name;
     }
 
-    void AddComponent(IComponent* component) {
-        m_components->push_back(component);
+    void AddComponent(std::shared_ptr<IComponent> component) {
+        m_components.push_back(std::move(component));
     }
 
-    std::vector<IComponent*>* GetComponents() {
+    std::vector<std::shared_ptr<IComponent>> GetComponents() {
         return m_components;
     }
 
@@ -64,7 +65,7 @@ private:
     std::string m_name;
 
     Transform m_transform;
-    Mesh m_pMesh;
+    Mesh m_mesh;
 
     std::vector<IUIDebugComponent*> m_componentViews;
 
@@ -76,5 +77,5 @@ private:
     std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;
 
     //  このモデルに紐づいているコンポーネント
-    std::vector<IComponent*>* m_components;
+    std::vector<std::shared_ptr<IComponent>> m_components;
 };
