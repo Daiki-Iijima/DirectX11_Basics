@@ -11,19 +11,19 @@ SphereHitDetection::SphereHitDetection(Model* model, ModelManager* modelManager)
 BoundingSphere SphereHitDetection::GetBoundingSphere() {
     BoundingSphere boundingSphere;
 
-    boundingSphere.center = m_model->GetMesh().GetCenter();
-    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->GetMesh().GetVertices());
+    boundingSphere.center = m_model->GetMesh()->GetCenter();
+    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->GetMesh()->GetVertices());
 
     return boundingSphere;
 }
 
-float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, const std::vector<Vertex>& vertices) {
+float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, std::shared_ptr<std::vector<Vertex>>& vertices) {
 
     float maxDistanceSq = 0.0f;
 
     //  ’†SÀ•W‚©‚ç’¸“_ŠÔ‚Å‚Ì‹——£‚ð‚·‚×‚ÄŒvŽZ
     //  ˆê”Ô‰“‚¢‚¢‹——£‚ð”¼Œa‚Æ‚µ‚Ä•Ô‚·
-    for (const auto& vertex : vertices) {
+    for (auto& vertex : *vertices) {
         XMVECTOR vertexPos = XMVectorSet(vertex.position.x, vertex.position.y, vertex.position.z, 0);
         float distanceSq = XMVectorGetX(XMVector3LengthSq(XMVectorSubtract(vertexPos, center)));
         if (distanceSq > maxDistanceSq) {

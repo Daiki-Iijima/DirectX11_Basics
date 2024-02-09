@@ -323,26 +323,26 @@ void Game::Render()
     //}
 
     // Start the Dear ImGui frame
-    //ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
-    //ImGui_ImplDX11_NewFrame();
-    //ImGui_ImplWin32_NewFrame();
-    //ImGui::NewFrame();
+    ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
 
-    //ImGui::Begin("Properties");
-    //if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-    //    cameraTransformView->ComponentUIRender();
-    //}
-    //if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-    //    lightTransformView->ComponentUIRender();
-    //}
-    //modelManager->DrawUIAll();
-    //ImGui::End();
+    ImGui::Begin("Properties");
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+        cameraTransformView->ComponentUIRender();
+    }
+    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+        lightTransformView->ComponentUIRender();
+    }
+    modelManager->DrawUIAll();
+    ImGui::End();
 
-    //// Rendering
-    //ImGui::Render();
-    //ImDrawData* pDrawData = ImGui::GetDrawData();
-    //ImGui_ImplDX11_RenderDrawData(pDrawData);
-    //ImGui::EndFrame();
+    // Rendering
+    ImGui::Render();
+    ImDrawData* pDrawData = ImGui::GetDrawData();
+    ImGui_ImplDX11_RenderDrawData(pDrawData);
+    ImGui::EndFrame();
 
     // Show the new frame.
     m_deviceResources->Present();
@@ -448,7 +448,7 @@ ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** cre
     D3DCompileFromFile(L"Shader/PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &compiledPS, nullptr);
 
     //  ピクセルシェーダーを生成する
-    device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, &pixelShader);
+    device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, createdShader);
 
     return compiledPS;
 }
@@ -566,15 +566,15 @@ void Game::CreateWindowSizeDependentResources()
 
     m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
 
-    ////  ImGuiの初期化
-    //if (ImGui::GetCurrentContext() == nullptr) {
-    //    IMGUI_CHECKVERSION();
-    //    ImGui::CreateContext();
-    //    bool result = ImGui_ImplWin32_Init(m_deviceResources->GetWindow());
-    //    result = ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
+    //  ImGuiの初期化
+    if (ImGui::GetCurrentContext() == nullptr) {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        bool result = ImGui_ImplWin32_Init(m_deviceResources->GetWindow());
+        result = ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
 
-    //    ImGui::StyleColorsDark();   //  ダークテーマを使用
-    //}
+        ImGui::StyleColorsDark();   //  ダークテーマを使用
+    }
 }
 
 void Game::OnDeviceLost()
@@ -591,6 +591,12 @@ void Game::OnDeviceLost()
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
+
+    delete modelManager;
+    delete tankModel;
+    delete camera;
+    delete cameraTransformView;
+    delete lightTransformView;
 }
 
 void Game::OnDeviceRestored()

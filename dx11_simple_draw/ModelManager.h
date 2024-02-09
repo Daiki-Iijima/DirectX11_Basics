@@ -48,6 +48,13 @@ public:
     }
 
 private:
+    struct MeshData {
+        std::string filePath;
+        std::string meshName;
+        std::shared_ptr<Mesh> m_mesh;
+        std::shared_ptr<ID3D11ShaderResourceView> m_textureView;
+    };
+    std::vector<std::shared_ptr<MeshData>> m_meshCache;
     //  ƒ‚ƒfƒ‹‚ÌƒŠƒXƒg
     std::vector<std::shared_ptr<Model>> m_models;
     std::vector<Model*> m_deleteModels;

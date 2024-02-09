@@ -14,6 +14,7 @@ class Model
 {
 public:
     Model();
+    Model(std::shared_ptr<Mesh>& mesh);
     Model(std::string name);
     Model(std::string name, Transform transform);
     ~Model();
@@ -28,10 +29,15 @@ public:
     }
 
     int GetTextureCount() {
-        return m_textureViews.size();
+        try {
+            return m_textureViews.size();
+        }
+        catch (std::exception e) {
+            return 0;
+        }
     }
 
-    vector<IUIDebugComponent*>& GetComponentUIDebugViews() {
+    std::vector<std::unique_ptr<IUIDebugComponent>>& GetComponentUIDebugViews() {
         return m_componentViews;
     }
 
@@ -39,8 +45,8 @@ public:
         return m_name;
     }
 
-    Mesh& GetMesh() {
-        return m_mesh;
+    std::shared_ptr<Mesh>& GetMesh() {
+        return m_pMesh;
     }
 
     //  Setter
@@ -65,9 +71,9 @@ private:
     std::string m_name;
 
     Transform m_transform;
-    Mesh m_mesh;
+    std::shared_ptr<Mesh> m_pMesh;
 
-    std::vector<IUIDebugComponent*> m_componentViews;
+    std::vector<std::unique_ptr<IUIDebugComponent>> m_componentViews;
 
     //  êeéqä÷åW
     Model* m_pParent;               //  êe
