@@ -130,7 +130,7 @@ public:
             //  ’e‚Ì“–‚½‚è”»’è‚Ì’Ç‰Á
             //  ‚±‚Ì“–‚½‚è”»’è‚ÍA•Ç‚É‚Í—˜‚©‚È‚¢
             //  “¯‚¶SphereHitDetection‚ğ‚Á‚Ä‚¢‚éƒ‚ƒfƒ‹‚É‚µ‚©“–‚½‚ç‚È‚¢
-            auto hitDetection = std::make_shared<SphereHitDetection>(bulletModel.get(), m_pModelManager);
+            auto hitDetection = std::make_shared<SphereHitDetection>(bulletModel, m_pModelManager);
             hitDetection->SetOnHitStart([this, bullet](BaseHitDetection* other) {
                 m_pModelManager->EraseModel(other->GetModel());
                 auto it = std::find(m_bullets.begin(), m_bullets.end(), bullet);

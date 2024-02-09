@@ -78,6 +78,8 @@ void ModelManager::LoadModel(std::vector<std::shared_ptr<Model>>* models, string
             if (data->filePath == modelPath && data->meshName == mesh->mName.C_Str()) {
                 model = std::make_shared<Model>(data->m_mesh);
 
+                model->SetName(mesh->mName.C_Str());
+
                 //  マテリアル情報の抽出
                 aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
@@ -320,17 +322,13 @@ void ModelManager::DrawUI(int index) {
     }
 }
 
-void ModelManager::EraseModel(Model* targetModel)
+void ModelManager::EraseModel(std::shared_ptr<Model> targetModel)
 {
     m_deleteModels.push_back(targetModel);
 }
 
-std::vector<Model*> ModelManager::GetAllModels() {
-    std::vector<Model*> modelsRawPointers;
-    for (auto& modelPtr : m_models) {
-        modelsRawPointers.push_back(modelPtr.get()); // std::unique_ptrから生ポインタを取得
-    }
-    return modelsRawPointers;
+std::vector<std::shared_ptr<Model>> ModelManager::GetAllModels() {
+    return m_models;
 }
 
 Model& ModelManager::GetModel(int index)
@@ -377,7 +375,7 @@ void ModelManager::UpdateAll()
 {
     //  削除リストの削除
     for (auto& model : m_deleteModels) {
-        m_models.erase(std::remove_if(m_models.begin(), m_models.end(), [model](std::shared_ptr<Model> m) { return m.get() == model; }), m_models.end());
+        m_models.erase(std::remove_if(m_models.begin(), m_models.end(), [model](std::shared_ptr<Model> m) { return m == model; }), m_models.end());
     }
     m_deleteModels.clear();
 

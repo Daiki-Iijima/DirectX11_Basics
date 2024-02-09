@@ -13,7 +13,8 @@ class Model;
 class BaseHitDetection : public IComponent
 {
 public:
-    BaseHitDetection(Model* model,ModelManager* modelManager);
+    BaseHitDetection(std::shared_ptr<Model> model, ModelManager* modelManager) : m_model(model), m_modelManager(modelManager) {
+    }
 
     void Update() override {
         HitCheck(m_modelManager->GetAllModels());
@@ -24,10 +25,10 @@ public:
     }
 
     //  当たり判定
-    virtual void HitCheck(vector<Model*> allModels) = 0;
+    virtual void HitCheck(vector<std::shared_ptr<Model>> allModels) = 0;
 
     //  Getter
-    Model* GetModel() {
+    std::shared_ptr<Model> GetModel() {
         return m_model;
     }
 
@@ -46,7 +47,7 @@ protected:
     ModelManager* m_modelManager;
 
     //  この当たり判定を持っているモデル
-    Model* m_model;
+    std::shared_ptr<Model> m_model;
 
     //  コールバック
     //  当たった時に呼ばれる

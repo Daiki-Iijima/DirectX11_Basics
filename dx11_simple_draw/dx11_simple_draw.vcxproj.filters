@@ -46,7 +46,6 @@
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModelManager.cpp" />
-    <ClCompile Include="HitDetection\BaseHitDetection.cpp" />
     <ClCompile Include="HitDetection\SphereHitDetection.cpp" />
     <ClCompile Include="Mesh.cpp" />
   </ItemGroup>

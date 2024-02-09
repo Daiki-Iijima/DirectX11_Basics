@@ -33,7 +33,7 @@ ComPtr<IDWriteTextFormat> textFormat;
 ComPtr<ID2D1Factory> d2dFactory;
 
 //  描画するテキスト
-std::wstring cameraInfoStr;
+std::wstring startTimerWstr;
 
 ModelManager* modelManager;
 
@@ -43,6 +43,17 @@ IUIDebugComponent* cameraTransformView;
 IUIDebugComponent* lightTransformView;
 
 TankModel* tankModel;
+
+bool isGameStart = false;
+bool isGameEnd = false;
+float gameStartTimer = 4;           //  ゲームスタートまでのカウントダウン用のタイマー
+float gameStartedDelayTimer = 0;    //  ゲームスタート後UIの非表示のための遅延時間
+float gameEndTimer = 0;             //  ゲーム終了までのカウントダウン用のタイマー
+
+int drumPoint = 0;                  //  ドラムの破壊数
+
+const static int SCREEN_WIDTH = 1280;
+const static int SCREEN_HEIGT = 720;
 
 Game::Game() noexcept(false)
 {
@@ -56,7 +67,6 @@ Game::Game() noexcept(false)
 // Initialize the Direct3D resources required to run.
 void Game::Initialize(HWND window, int width, int height)
 {
-
     //  カメラの初期化
     camera = new Camera(XMVectorSet(0.0f, 0.0f, -5.0f, 0.0f), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
 
@@ -104,9 +114,12 @@ void Game::Initialize(HWND window, int width, int height)
         DWRITE_FONT_WEIGHT_NORMAL,  // フォントの太さ
         DWRITE_FONT_STYLE_NORMAL,   // フォントスタイル
         DWRITE_FONT_STRETCH_NORMAL, // フォントの伸縮
-        20.0f,                      // フォントサイズ
+        40.0f,                      // フォントサイズ
         L"en-us",                   // ロケール
         &textFormat);
+
+    textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+    textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
     if (FAILED(hr)) {
         // エラー処理
@@ -181,20 +194,65 @@ void UpdateCameraTransform(float moveSpeed,float rotateSpeed, float elapsedTime,
     camera->GetViewMatrix(view);
 }
 
-float drumCreateTimer = 0.f;
+float drumCreateTimer = 5.f;
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
     float elapsedTime = float(timer.GetElapsedSeconds());
 
-    //UpdateCameraTransform(5.0f, 90.0f, elapsedTime, m_view);
-
     //  実質カメラの更新
     camera->GetViewMatrix(m_view);
 
-    //  カメラの更新した座標をテキストとして取得
-    cameraInfoStr = camera->GetTransform().GetInfoToWString(3);
+    //  ゲーム終了した場合
+    if (isGameEnd) {
+        //  Enterキーが押されたらゲームをリセットする
+        if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+            isGameEnd = false;
+            isGameStart = false;
+            drumPoint = 0;
+
+            //  モデルのリセット
+            vector<std::shared_ptr<Model>> models = modelManager->GetAllModels();
+            for (std::shared_ptr<Model> model : models) {
+                //  ドラムを全て削除
+                if (model->GetName() == "Drum") {
+                    modelManager->EraseModel(model);
+                }
+                //  弾をすべて削除
+                if (model->GetName() == "Bullet") {
+                    modelManager->EraseModel(model);
+                }
+            }
+            return;
+        }
+
+        return;
+    }
+
+    //  ゲームスタート
+    if (!isGameStart) {
+        gameStartTimer -= elapsedTime;
+        if (gameStartTimer < 0) {
+            isGameStart = true;
+            gameStartTimer = 4;
+            startTimerWstr = L"Game Start";
+            gameEndTimer = 20;
+            return;
+        }
+        //  ゲームスタートまでのカウントダウン
+        startTimerWstr = std::to_wstring((int)gameStartTimer);
+        gameStartedDelayTimer = 0;
+        return;
+    }
+
+    gameStartedDelayTimer += elapsedTime;
+    gameEndTimer -= elapsedTime;
+
+    if (gameEndTimer < 0) {
+        //  ゲーム終了
+        isGameEnd = true;
+    }
 
     //  モデルの更新
     modelManager->UpdateAll();
@@ -210,10 +268,11 @@ void Game::Update(DX::StepTimer const& timer)
         //  ランダム座標を生成
         DirectX::XMVECTOR randomPos = DirectX::XMVectorSet((rand() % 10) - 5.f, 0.f, (rand() % 10) - 5.f, 0.f);
         drumModel->GetTransform().SetPosition(randomPos);
-        std::shared_ptr<SphereHitDetection> sphereHitDetection = std::make_shared<SphereHitDetection>(drumModel.get(), modelManager);
+        std::shared_ptr<SphereHitDetection> sphereHitDetection = std::make_shared<SphereHitDetection>(drumModel, modelManager);
         sphereHitDetection->SetOnHitStart([](BaseHitDetection* other) {
             //  爆発させて消したい
             modelManager->EraseModel(other->GetModel());
+            drumPoint++;
             });
         drumModel->AddComponent(std::move(sphereHitDetection));
         drumCreateTimer = 0.f;
@@ -272,55 +331,115 @@ void Game::Render()
 
     m_deviceResources->PIXEndEvent();
 
-    //// DeviceResources で SwapChain のバックバッファを取得
-    //Microsoft::WRL::ComPtr<IDXGISurface> backBuffer;
-    //HRESULT hr = m_deviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    // DeviceResources で SwapChain のバックバッファを取得
+    Microsoft::WRL::ComPtr<IDXGISurface> backBuffer;
+    HRESULT hr = m_deviceResources->GetSwapChain()->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
 
-    //// Direct2D レンダーターゲットプロパティを設定
-    //D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
-    //    D2D1_RENDER_TARGET_TYPE_DEFAULT,
-    //    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
-    //    0,
-    //    0);
+    // Direct2D レンダーターゲットプロパティを設定
+    D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(
+        D2D1_RENDER_TARGET_TYPE_DEFAULT,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+        0,
+        0);
 
-    //// Direct2D レンダーターゲットを作成
-    //Microsoft::WRL::ComPtr<ID2D1RenderTarget> d2dRenderTarget;
-    //hr = d2dFactory->CreateDxgiSurfaceRenderTarget(backBuffer.Get(), &props, &d2dRenderTarget);
+    // Direct2D レンダーターゲットを作成
+    Microsoft::WRL::ComPtr<ID2D1RenderTarget> d2dRenderTarget;
+    hr = d2dFactory->CreateDxgiSurfaceRenderTarget(backBuffer.Get(), &props, &d2dRenderTarget);
 
-    ////  テキスト用のブラシを作成
-    //ComPtr<ID2D1SolidColorBrush> textColorBrush;
-    //D2D1_COLOR_F textColor = D2D1::ColorF(D2D1::ColorF::Black,1.f);
-    //d2dRenderTarget->CreateSolidColorBrush(textColor, &textColorBrush);
+    //  テキスト用のブラシを作成
+    ComPtr<ID2D1SolidColorBrush> textColorBrush;
+    D2D1_COLOR_F textColor = D2D1::ColorF(D2D1::ColorF::Black,1.f);
+    d2dRenderTarget->CreateSolidColorBrush(textColor, &textColorBrush);
 
-    ////  CameraPosition用の背景色を作成
-    //ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
-    //D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.8f);
-    //d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
+    //  CameraPosition用の背景色を作成
+    ComPtr<ID2D1SolidColorBrush> positionBackColorBrush;
+    D2D1_COLOR_F positionBackColor = D2D1::ColorF(D2D1::ColorF::Gray,0.8f);
+    d2dRenderTarget->CreateSolidColorBrush(positionBackColor, &positionBackColorBrush);
 
-    //// 描画開始
-    //d2dRenderTarget->BeginDraw();
+    // 描画開始
+    d2dRenderTarget->BeginDraw();
 
-    ////  表示用領域を定義
-    //D2D_RECT_F positionInfoRect = D2D1::RectF(20, 20, 330, 100);
+    //  ゲームスタートまでのカウントダウンを描画
+    if (gameStartedDelayTimer < 2) {
+        //  表示用領域を定義
+        //  左,上,右,下
+        float centerX = SCREEN_WIDTH / 2;
+        float centerY = SCREEN_HEIGT / 2;
+        D2D_RECT_F positionInfoRect = D2D1::RectF(centerX - 200, centerY - 100, centerX + 200, centerY + 100);
 
-    ////  カメラ位置情報を描画
-    ////  背景を描画
-    //d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
-    ////  テキストを描画
-    //d2dRenderTarget->DrawText(
-    //    cameraInfoStr.c_str(),         // 描画するテキスト
-    //    static_cast<UINT32>(cameraInfoStr.length()), // テキストの長さ
-    //    textFormat.Get(),           // テキストフォーマット
-    //    positionInfoRect,               // 描画する領域
-    //    textColorBrush.Get());            // ブラシ
+        //  背景を描画
+        d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+        //  テキストを描画
+        d2dRenderTarget->DrawText(
+            startTimerWstr.c_str(),         // 描画するテキスト
+            static_cast<UINT32>(startTimerWstr.length()), // テキストの長さ
+            textFormat.Get(),           // テキストフォーマット
+            positionInfoRect,               // 描画する領域
+            textColorBrush.Get());            // ブラシ
+    }
 
-    //// 描画終了
-    //hr = d2dRenderTarget->EndDraw();
+    //  ゲーム終了までのカウントダウンを描画
+    {
+        D2D_RECT_F positionInfoRect = D2D1::RectF(0, 0, 200, 100);
 
-    //if (FAILED(hr)) {
-    //    // エラー処理
-    //    return;
-    //}
+        std::wstring gameEndTimerWstr = L"Timer : " + std::to_wstring((int)gameEndTimer);
+
+        //  背景を描画
+        d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+        //  テキストを描画
+        d2dRenderTarget->DrawText(
+            gameEndTimerWstr.c_str(),         // 描画するテキスト
+            static_cast<UINT32>(gameEndTimerWstr.length()), // テキストの長さ
+            textFormat.Get(),           // テキストフォーマット
+            positionInfoRect,               // 描画する領域
+            textColorBrush.Get());            // ブラシ
+    }
+    //  ドラムの破壊数
+    {
+        D2D_RECT_F positionInfoRect = D2D1::RectF(SCREEN_WIDTH - 200, 0, SCREEN_WIDTH, 100);
+
+        std::wstring drumPointWstr = L"Point : " + std::to_wstring(drumPoint);
+
+        //  背景を描画
+        d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+        //  テキストを描画
+        d2dRenderTarget->DrawText(
+            drumPointWstr.c_str(),         // 描画するテキスト
+            static_cast<UINT32>(drumPointWstr.length()), // テキストの長さ
+            textFormat.Get(),           // テキストフォーマット
+            positionInfoRect,               // 描画する領域
+            textColorBrush.Get());            // ブラシ
+    }
+
+    if (isGameEnd) {
+        //  表示用領域を定義
+        //  左,上,右,下
+        float centerX = SCREEN_WIDTH / 2;
+        float centerY = SCREEN_HEIGT / 2;
+        D2D_RECT_F positionInfoRect = D2D1::RectF(centerX - 200, centerY - 100, centerX + 200, centerY + 100);
+
+        //  描画するテキスト
+        //  ゲーム終了 + ドラムの破壊数
+        std::wstring gameEndWstr = L"Game Over\nResult : " + std::to_wstring(drumPoint) + L"\nRestart To [Enter Key]";
+
+        //  背景を描画
+        d2dRenderTarget->FillRectangle(positionInfoRect, positionBackColorBrush.Get());
+        //  テキストを描画
+        d2dRenderTarget->DrawText(
+            gameEndWstr.c_str(),         // 描画するテキスト
+            static_cast<UINT32>(gameEndWstr.length()), // テキストの長さ
+            textFormat.Get(),           // テキストフォーマット
+            positionInfoRect,               // 描画する領域
+            textColorBrush.Get());            // ブラシ
+    }
+
+    // 描画終了
+    hr = d2dRenderTarget->EndDraw();
+
+    if (FAILED(hr)) {
+        // エラー処理
+        return;
+    }
 
     // Start the Dear ImGui frame
     ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
@@ -419,8 +538,8 @@ void Game::OnWindowSizeChanged(int width, int height)
 void Game::GetDefaultSize(int& width, int& height) const noexcept
 {
     // TODO: Change to desired default window size (note minimum size is 320x200).
-    width = 1720;
-    height = 880;
+    width = SCREEN_WIDTH;
+    height = SCREEN_HEIGT;
 }
 #pragma endregion
 
