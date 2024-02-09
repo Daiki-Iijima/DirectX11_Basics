@@ -442,6 +442,7 @@ void Game::Render()
         return;
     }
 
+#ifdef _DEBUG
     // Start the Dear ImGui frame
     ImVec2 imvec2 = ImVec2((float)m_deviceResources->GetOutputSize().right, (float)m_deviceResources->GetOutputSize().bottom);
     ImGui_ImplDX11_NewFrame();
@@ -463,6 +464,7 @@ void Game::Render()
     ImDrawData* pDrawData = ImGui::GetDrawData();
     ImGui_ImplDX11_RenderDrawData(pDrawData);
     ImGui::EndFrame();
+#endif
 
     // Show the new frame.
     m_deviceResources->Present();
@@ -578,7 +580,7 @@ ComPtr<ID3DBlob> CreateVertexShaderFromCSO(ID3D11Device* device, ID3D11VertexSha
     return compiledVS;
 }
 
-ComPtr<ID3DBlob> CreatePixelShaderCSO(ID3D11Device* device, ID3D11PixelShader** createdShader) {
+ComPtr<ID3DBlob> CreatePixelShaderFromCSO(ID3D11Device* device, ID3D11PixelShader** createdShader) {
     ComPtr<ID3DBlob> compiledPS = LoadShaderFromFile(L"PixelShader.cso");
 
     // ピクセルシェーダーを生成する
@@ -677,11 +679,19 @@ void Game::CreateDeviceDependentResources()
     tankModel = new TankModel(models, camera, modelManager);
     modelManager->CreateModelFromObj("Models/Map.obj");
 
+#ifdef _DEBUG
+    //  頂点シェーダーを生成する
+    ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
+
+    //  ピクセルシェーダーを生成する
+    ComPtr<ID3DBlob> compiledPS = CreatePixelShader(device, &pixelShader);
+#else
     //  頂点シェーダーを生成する
     ComPtr<ID3DBlob> compiledVS = CreateVertexShaderFromCSO(device,&verteShader);
 
     //  ピクセルシェーダーを生成する
-    ComPtr<ID3DBlob> compiledPS = CreatePixelShaderCSO(device, &pixelShader);
+    ComPtr<ID3DBlob> compiledPS = CreatePixelShaderFromCSO(device, &pixelShader);
+#endif // _DEBUG
 
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
@@ -734,6 +744,8 @@ void Game::CreateWindowSizeDependentResources()
     m_projection = DirectX::XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearZ, farZ);
 
     //  ImGuiの初期化
+
+#ifdef _DEBUG
     if (ImGui::GetCurrentContext() == nullptr) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -742,6 +754,7 @@ void Game::CreateWindowSizeDependentResources()
 
         ImGui::StyleColorsDark();   //  ダークテーマを使用
     }
+#endif
 }
 
 void Game::OnDeviceLost()
