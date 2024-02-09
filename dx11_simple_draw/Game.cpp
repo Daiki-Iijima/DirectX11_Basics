@@ -13,6 +13,7 @@
 #include "LightUIDebugView.h"
 #include "TankModel.h"
 #include "HitDetection/SphereHitDetection.h"
+#include <fstream>
 
 extern void ExitGame() noexcept;
 
@@ -543,6 +544,53 @@ void Game::GetDefaultSize(int& width, int& height) const noexcept
 }
 #pragma endregion
 
+ComPtr<ID3DBlob> LoadShaderFromFile(const wchar_t* fileName) {
+    std::ifstream shaderFile(fileName, std::ios::in | std::ios::binary | std::ios::ate);
+
+    if (!shaderFile.is_open()) {
+        throw std::runtime_error("Failed to open the shader file.");
+    }
+
+    size_t fileSize = (size_t)shaderFile.tellg();
+    ComPtr<ID3DBlob> shaderBlob;
+    HRESULT hr = D3DCreateBlob(fileSize, &shaderBlob);
+
+    if (FAILED(hr)) {
+        throw std::runtime_error("Failed to create the shader blob.");
+    }
+
+    shaderFile.seekg(0, std::ios::beg);
+    shaderFile.read((char*)shaderBlob->GetBufferPointer(), fileSize);
+    shaderFile.close();
+
+    return shaderBlob;
+}
+
+ComPtr<ID3DBlob> CreateVertexShaderFromCSO(ID3D11Device* device, ID3D11VertexShader** createdShader) {
+    ComPtr<ID3DBlob> compiledVS = LoadShaderFromFile(L"VertexShader.cso");
+
+    // 頂点シェーダーを生成する
+    HRESULT hr = device->CreateVertexShader(compiledVS->GetBufferPointer(), compiledVS->GetBufferSize(), nullptr, createdShader);
+    if (FAILED(hr)) {
+        throw std::runtime_error("Failed to create the vertex shader.");
+    }
+
+    return compiledVS;
+}
+
+ComPtr<ID3DBlob> CreatePixelShaderCSO(ID3D11Device* device, ID3D11PixelShader** createdShader) {
+    ComPtr<ID3DBlob> compiledPS = LoadShaderFromFile(L"PixelShader.cso");
+
+    // ピクセルシェーダーを生成する
+    HRESULT hr = device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, createdShader);
+    if (FAILED(hr)) {
+        throw std::runtime_error("Failed to create the pixel shader.");
+    }
+
+    return compiledPS;
+}
+
+
 /// <summary>
 /// 頂点シェーダを生成
 /// </summary>
@@ -630,10 +678,10 @@ void Game::CreateDeviceDependentResources()
     modelManager->CreateModelFromObj("Models/Map.obj");
 
     //  頂点シェーダーを生成する
-    ComPtr<ID3DBlob> compiledVS = CreateVertexShader(device,&verteShader);
+    ComPtr<ID3DBlob> compiledVS = CreateVertexShaderFromCSO(device,&verteShader);
 
     //  ピクセルシェーダーを生成する
-    ComPtr<ID3DBlob> compiledPS = CreatePixelShader(device, &pixelShader);
+    ComPtr<ID3DBlob> compiledPS = CreatePixelShaderCSO(device, &pixelShader);
 
     //  頂点インプットレイアウトを生成する
     CreateInputLayout(device, compiledVS.Get(), &inputLayout);
