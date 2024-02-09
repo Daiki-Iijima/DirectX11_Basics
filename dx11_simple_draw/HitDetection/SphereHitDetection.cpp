@@ -3,13 +3,13 @@
 #include "HitDetection/SphereHitDetection.h"
 #include "Model.h"
 
-SphereHitDetection::SphereHitDetection(Model* model, ModelManager* modelManager) :BaseHitDetection(model, modelManager), m_radius(1.f) {
+SphereHitDetection::SphereHitDetection(std::shared_ptr<Model> model, ModelManager* modelManager) :BaseHitDetection(model, modelManager), m_radius(1.f) {
     m_hitObjects = vector<BaseHitDetection*>();
 }
 
 
 BoundingSphere SphereHitDetection::GetBoundingSphere() {
-    BoundingSphere boundingSphere;
+    BoundingSphere boundingSphere{};
 
     boundingSphere.center = m_model->GetMesh()->GetCenter();
     boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->GetMesh()->GetVertices());
@@ -35,12 +35,12 @@ float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, s
 
 
 //  当たり判定
-void SphereHitDetection::HitCheck(vector<Model*> allModels) {
+void SphereHitDetection::HitCheck(vector<std::shared_ptr<Model>> allModels) {
 
     std::vector<BaseHitDetection*> hitDetections = std::vector<BaseHitDetection*>();
 
     //  当たり判定コンポーネントを持っているオブジェクトを抽出
-    for (Model* model : allModels) {
+    for (std::shared_ptr<Model> model : allModels) {
         auto components = model->GetComponents();
         for (auto& component : components) {
             BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component.get());

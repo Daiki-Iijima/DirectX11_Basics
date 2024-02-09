@@ -14,15 +14,15 @@ struct BoundingSphere {
 class SphereHitDetection : public BaseHitDetection
 {
 public:
-    SphereHitDetection(Model* model,ModelManager* modelManager);
+    SphereHitDetection(std::shared_ptr<Model> model,ModelManager* modelManager);
 
     //  “–‚½‚è”»’è
-    void HitCheck(vector<Model*> allModels) override;
+    void HitCheck(vector<std::shared_ptr<Model>> allModels) override;
 
     BoundingSphere GetBoundingSphere();
 
     //  Getter
-    float GetRadius() {
+    float GetRadius() const {
         return m_radius;
     }
 

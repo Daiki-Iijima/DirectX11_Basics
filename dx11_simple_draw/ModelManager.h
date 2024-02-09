@@ -17,10 +17,10 @@ public:
     std::vector<std::shared_ptr<Model>> CreateModelFromObj(string path);
 
     //  モデルの削除
-    void EraseModel(Model* model);
+    void EraseModel(std::shared_ptr<Model>  model);
 
     //  モデルの数
-    std::vector<Model*> GetAllModels();
+    std::vector<std::shared_ptr<Model>> GetAllModels();
 
     //  モデルの取得
     Model& GetModel(int index);
@@ -57,7 +57,7 @@ private:
     std::vector<std::shared_ptr<MeshData>> m_meshCache;
     //  モデルのリスト
     std::vector<std::shared_ptr<Model>> m_models;
-    std::vector<Model*> m_deleteModels;
+    std::vector<std::shared_ptr<Model>> m_deleteModels;
 
     //  モデルの読み込み
     void LoadModel(std::vector<std::shared_ptr<Model>>* models, string modelPath);
