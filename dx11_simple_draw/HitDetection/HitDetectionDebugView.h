@@ -14,7 +14,7 @@ public:
     {}
 
     void RenderDebugHitDetection() {
-        std::vector<Model*>* hitDetectionModel = m_pModelManager->CreateModelFromObj("Models/Sphere/Sphere.obj");
+        auto hitDetectionModel = m_pModelManager->CreateModelFromObj("Models/Sphere/Sphere.obj");
     }
 
 private:

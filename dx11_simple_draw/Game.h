@@ -7,9 +7,11 @@
 #include "Common/DeviceResources.h"
 #include "Common/StepTimer.h"
 
-#include <assimp/Importer.hpp>
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <assimp/metadata.h>
+#include <assimp/anim.h>
 
 #pragma comment(lib,"d3dcompiler.lib")
 #include <d3dcompiler.h>

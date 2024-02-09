@@ -14,8 +14,10 @@ class Model
 {
 public:
     Model();
+    Model(std::shared_ptr<Mesh>& mesh);
     Model(std::string name);
-    Model(std::string name, Transform transform, std::vector<IComponent*>* components);
+    Model(std::string name, Transform transform);
+    ~Model();
 
     //  Getter
     Transform& GetTransform() {
@@ -27,10 +29,15 @@ public:
     }
 
     int GetTextureCount() {
-        return m_textureViews.size();
+        try {
+            return m_textureViews.size();
+        }
+        catch (std::exception e) {
+            return 0;
+        }
     }
 
-    vector<IUIDebugComponent*>& GetComponentUIDebugViews() {
+    std::vector<std::unique_ptr<IUIDebugComponent>>& GetComponentUIDebugViews() {
         return m_componentViews;
     }
 
@@ -38,7 +45,7 @@ public:
         return m_name;
     }
 
-    Mesh& GetMesh() {
+    std::shared_ptr<Mesh>& GetMesh() {
         return m_pMesh;
     }
 
@@ -51,11 +58,11 @@ public:
         m_name = name;
     }
 
-    void AddComponent(IComponent* component) {
-        m_components->push_back(component);
+    void AddComponent(std::shared_ptr<IComponent> component) {
+        m_components.push_back(std::move(component));
     }
 
-    std::vector<IComponent*>* GetComponents() {
+    std::vector<std::shared_ptr<IComponent>> GetComponents() {
         return m_components;
     }
 
@@ -64,9 +71,9 @@ private:
     std::string m_name;
 
     Transform m_transform;
-    Mesh m_pMesh;
+    std::shared_ptr<Mesh> m_pMesh;
 
-    std::vector<IUIDebugComponent*> m_componentViews;
+    std::vector<std::unique_ptr<IUIDebugComponent>> m_componentViews;
 
     //  親子関係
     Model* m_pParent;               //  親
@@ -76,5 +83,5 @@ private:
     std::vector<ComPtr<ID3D11ShaderResourceView>> m_textureViews;
 
     //  このモデルに紐づいているコンポーネント
-    std::vector<IComponent*>* m_components;
+    std::vector<std::shared_ptr<IComponent>> m_components;
 };

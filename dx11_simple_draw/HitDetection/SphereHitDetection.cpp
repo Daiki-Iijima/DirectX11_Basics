@@ -1,4 +1,5 @@
 #include "Common/pch.h"
+#include "BaseHitDetection.h"
 #include "HitDetection/SphereHitDetection.h"
 #include "Model.h"
 
@@ -10,19 +11,19 @@ SphereHitDetection::SphereHitDetection(Model* model, ModelManager* modelManager)
 BoundingSphere SphereHitDetection::GetBoundingSphere() {
     BoundingSphere boundingSphere;
 
-    boundingSphere.center = m_model->GetMesh().GetCenter();
-    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, *m_model->GetMesh().GetVertices());
+    boundingSphere.center = m_model->GetMesh()->GetCenter();
+    boundingSphere.radius = CalulateBoundingSphereRadius(boundingSphere.center, m_model->GetMesh()->GetVertices());
 
     return boundingSphere;
 }
 
-float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, const std::vector<Vertex>& vertices) {
+float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, std::shared_ptr<std::vector<Vertex>>& vertices) {
 
     float maxDistanceSq = 0.0f;
 
     //  中心座標から頂点間での距離をすべて計算
     //  一番遠いい距離を半径として返す
-    for (const auto& vertex : vertices) {
+    for (auto& vertex : *vertices) {
         XMVECTOR vertexPos = XMVectorSet(vertex.position.x, vertex.position.y, vertex.position.z, 0);
         float distanceSq = XMVectorGetX(XMVector3LengthSq(XMVectorSubtract(vertexPos, center)));
         if (distanceSq > maxDistanceSq) {
@@ -34,15 +35,15 @@ float SphereHitDetection::CalulateBoundingSphereRadius(const XMVECTOR& center, c
 
 
 //  当たり判定
-void SphereHitDetection::HitCheck(vector<Model*>& allModels) {
+void SphereHitDetection::HitCheck(vector<Model*> allModels) {
 
     std::vector<BaseHitDetection*> hitDetections = std::vector<BaseHitDetection*>();
 
     //  当たり判定コンポーネントを持っているオブジェクトを抽出
     for (Model* model : allModels) {
-        std::vector<IComponent*>* components = model->GetComponents();
-        for (IComponent* component : *components) {
-            BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component);
+        auto components = model->GetComponents();
+        for (auto& component : components) {
+            BaseHitDetection* hitDetection = dynamic_cast<BaseHitDetection*>(component.get());
             if (hitDetection != nullptr) {
                 hitDetections.push_back(hitDetection);
             }

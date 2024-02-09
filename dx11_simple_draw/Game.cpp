@@ -206,16 +206,16 @@ void Game::Update(DX::StepTimer const& timer)
     drumCreateTimer += elapsedTime;
     if (drumCreateTimer > 5.f) {
         //  ドラムの追加
-        Model* drumModel = modelManager->CreateModelFromObj("Models/Drum.obj")->at(0);
+        auto drumModel = modelManager->CreateModelFromObj("Models/Drum.obj").at(0);
         //  ランダム座標を生成
         DirectX::XMVECTOR randomPos = DirectX::XMVectorSet((rand() % 10) - 5.f, 0.f, (rand() % 10) - 5.f, 0.f);
         drumModel->GetTransform().SetPosition(randomPos);
-        SphereHitDetection* sphereHitDetection = new SphereHitDetection(drumModel, modelManager);
-        sphereHitDetection->SetOnHitStart([drumModel](BaseHitDetection* other) {
+        std::shared_ptr<SphereHitDetection> sphereHitDetection = std::make_shared<SphereHitDetection>(drumModel.get(), modelManager);
+        sphereHitDetection->SetOnHitStart([](BaseHitDetection* other) {
             //  爆発させて消したい
             modelManager->EraseModel(other->GetModel());
             });
-        drumModel->AddComponent(sphereHitDetection);
+        drumModel->AddComponent(std::move(sphereHitDetection));
         drumCreateTimer = 0.f;
     }
 
@@ -342,7 +342,7 @@ void Game::Render()
     ImGui::Render();
     ImDrawData* pDrawData = ImGui::GetDrawData();
     ImGui_ImplDX11_RenderDrawData(pDrawData);
-
+    ImGui::EndFrame();
 
     // Show the new frame.
     m_deviceResources->Present();
@@ -448,7 +448,7 @@ ComPtr<ID3DBlob> CreatePixelShader(ID3D11Device* device, ID3D11PixelShader** cre
     D3DCompileFromFile(L"Shader/PixelShader.hlsl", nullptr, nullptr, "main", "ps_5_0", 0, 0, &compiledPS, nullptr);
 
     //  ピクセルシェーダーを生成する
-    device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, &pixelShader);
+    device->CreatePixelShader(compiledPS->GetBufferPointer(), compiledPS->GetBufferSize(), nullptr, createdShader);
 
     return compiledPS;
 }
@@ -506,7 +506,7 @@ void Game::CreateDeviceDependentResources()
     auto device = m_deviceResources->GetD3DDevice();
 
     modelManager = new ModelManager(*device, *m_deviceResources->GetD3DDeviceContext());
-    vector<Model*>* models = modelManager->CreateModelFromObj("Models/TankO.obj");
+    auto models = modelManager->CreateModelFromObj("Models/TankO.obj");
     tankModel = new TankModel(models, camera, modelManager);
     modelManager->CreateModelFromObj("Models/Map.obj");
 
@@ -591,6 +591,12 @@ void Game::OnDeviceLost()
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
+
+    delete modelManager;
+    delete tankModel;
+    delete camera;
+    delete cameraTransformView;
+    delete lightTransformView;
 }
 
 void Game::OnDeviceRestored()

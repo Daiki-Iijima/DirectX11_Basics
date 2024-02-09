@@ -17,16 +17,26 @@ class Mesh
 {
 public:
     Mesh();
-    Mesh(std::vector<Vertex>* vertices, std::vector<unsigned short>* indices);
+    Mesh(std::vector<Vertex> vertices, std::vector<unsigned short> indices);
+
+    ~Mesh();
 
     HRESULT CreateBuffer(ID3D11Device& device);
 
-    std::vector<Vertex>* GetVertices() {
+    std::shared_ptr<std::vector<Vertex>>& GetVertices() {
         return m_pVertices;
     }
 
-    std::vector<unsigned short>* GetIndices() {
+    void SetVertices(std::shared_ptr<std::vector<Vertex>> vertices) {
+        m_pVertices = vertices;
+    }
+
+    std::shared_ptr<std::vector<unsigned short>>& GetIndices() {
         return m_pIndices;
+    }
+
+    void SetIndices(std::shared_ptr<std::vector<unsigned short>> vertices) {
+        m_pIndices = vertices;
     }
 
     //  ï`âÊ
@@ -50,8 +60,8 @@ private:
     HRESULT CreateIndexBuffer(ID3D11Device& device);
 
     //  === CPUÉÅÉÇÉä ===
-    std::vector<Vertex>* m_pVertices;
-    std::vector<unsigned short>* m_pIndices;
+    std::shared_ptr<std::vector<Vertex>> m_pVertices;
+    std::shared_ptr<std::vector<unsigned short>> m_pIndices;
 
     //  === GPUÉÅÉÇÉä ===
     ComPtr<ID3D11Buffer> m_vertexBuffer;

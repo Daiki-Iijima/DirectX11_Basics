@@ -5,6 +5,11 @@
 #include <DirectXTex.h>
 #include "HitDetection/SphereHitDetection.h"
 #include "HitDetection/HitDetectionDebugView.h"
+#include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/metadata.h>
+#include <assimp/anim.h>
 
 using namespace DirectX;
 
@@ -16,6 +21,9 @@ HRESULT CreateTextureFromPath(ID3D11Device* device, ID3D11DeviceContext* context
     }
 
     hr = DirectX::CreateShaderResourceView(device, scratchImage.GetImages(), scratchImage.GetImageCount(), scratchImage.GetMetadata(), textureView);
+
+    scratchImage.Release();
+
     return hr;
 }
 
@@ -42,7 +50,7 @@ void CreateTexture(ID3D11Device* device,aiColor3D diffuseColor, ID3D11ShaderReso
     generateTexture->Release();
 }
 
-void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
+void ModelManager::LoadModel(std::vector<std::shared_ptr<Model>>* models, string modelPath) {
     //  モデルの読み込み
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
@@ -63,12 +71,95 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
     for (unsigned int m = 0; m < scene->mNumMeshes; m++) {
         aiMesh* mesh = scene->mMeshes[m];
 
-        Model* model = new Model();
-        models->push_back(model);
-        Mesh meshComponent = model->GetMesh();
-        
+        std::shared_ptr<Model> model = nullptr;
+
+        //  キャッシュにある場合はキャッシュから取得
+        for (std::shared_ptr<MeshData> data : m_meshCache) {
+            if (data->filePath == modelPath && data->meshName == mesh->mName.C_Str()) {
+                model = std::make_shared<Model>(data->m_mesh);
+
+                //  マテリアル情報の抽出
+                aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+                //  テクスチャの読み込み
+                for (unsigned int i = 0; i < material->GetTextureCount(aiTextureType_DIFFUSE); i++) {
+                    // モデルパスからディレクトリを抽出
+                    std::string modelDirectory = modelPath;
+                    size_t lastSlashPos = modelDirectory.find_last_of("/\\");
+                    if (lastSlashPos != std::string::npos) {
+                        modelDirectory = modelDirectory.substr(0, lastSlashPos + 1);
+                    }
+                    else {
+                        modelDirectory = ""; // ディレクトリが見つからない場合、カレントディレクトリを使用
+                    }
+
+                    aiString str;
+                    material->GetTexture(aiTextureType_DIFFUSE, i, &str);
+                    //  テクスチャの読み込み
+                    //  パスを出力してみる
+                    std::wstring path(str.C_Str(), str.C_Str() + str.length);
+                    OutputDebugString(std::wstring(path.begin(), path.end()).c_str());
+
+                    //  読み込んだテクスチャ情報
+                    ComPtr<ID3D11ShaderResourceView> textureView = nullptr;
+
+                    //  パスを正式なパスに変換
+                    // std::string型のmodelDirectoryをstd::wstringに変換
+                    std::wstring wModelDirectory(modelDirectory.begin(), modelDirectory.end());
+
+                    // パスの結合
+                    std::wstring fullPath = wModelDirectory + std::wstring(str.C_Str(), str.C_Str() + str.length);
+
+                    // デバッグ出力
+                    OutputDebugString(fullPath.c_str());
+
+                    //  テクスチャの生成
+                    CreateTextureFromPath(m_device, m_deviceContext, fullPath, &textureView);
+
+                    //  モデルクラスに保存
+                    model->AddTexture(textureView.Get());
+                }
+
+                if (model->GetTextureCount() <= m) {
+                    //  テクスチャがない場合は白色のテクスチャを生成
+                    ComPtr<ID3D11ShaderResourceView> textureView = nullptr;
+                    aiColor3D color(0.f, 0.f, 0.f);
+                    //  色が取得できた場合はその色をテクスチャにする
+                    if (AI_SUCCESS == material->Get(AI_MATKEY_COLOR_DIFFUSE, color)) {
+                        CreateTexture(m_device, color, &textureView);
+                    }
+                    //  色が取得できなかった場合は白色
+                    else {
+                        CreateTexture(m_device, color, &textureView);
+                    }
+                    model->AddTexture(textureView.Get());
+                }
+
+                material->Clear();
+
+                models->push_back(std::move(model));
+
+                return;
+            }
+        }
+
+        //  ない場合は新規作成
+        model = std::make_shared<Model>();
+
+
+        std::shared_ptr<Mesh>& meshComponent = model->GetMesh();
+        meshComponent->GetVertices() = std::make_shared<std::vector<Vertex>>();
+        meshComponent->GetIndices() = std::make_shared<std::vector<unsigned short>>();
+
         //  名前の設定
         model->SetName(mesh->mName.C_Str());
+
+        //  キャッシュの生成
+        std::shared_ptr<MeshData> meshData = std::make_shared<MeshData>();
+        meshData->filePath = modelPath;
+        meshData->meshName = mesh->mName.C_Str();
+        meshData->m_mesh = meshComponent;
+        m_meshCache.push_back(meshData);
 
         // 頂点情報の抽出
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -81,21 +172,21 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             //  テクスチャ座標の取得
             if (mesh->HasTextureCoords(0)) {
                 aiVector3D texcoord = mesh->mTextureCoords[0][i];
-                vertex.texcoord = DirectX::XMFLOAT2(texcoord.x, texcoord.y);
+                vertex.texcoord = DirectX::XMFLOAT2(1-texcoord.x, 1 - texcoord.y);
             }
             else {
                 //  テクスチャ座標がない場合は0で埋める
                 vertex.texcoord = DirectX::XMFLOAT2(0.0f, 0.0f);
             }
 
-            meshComponent.GetVertices()->push_back(vertex);
+            meshComponent->GetVertices()->push_back(vertex);
         }
 
         // インデックス情報の抽出
         for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                meshComponent.GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
+                meshComponent->GetIndices()->push_back(static_cast<unsigned short>(face.mIndices[j]));
             }
         }
 
@@ -122,7 +213,7 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             OutputDebugString(std::wstring(path.begin(), path.end()).c_str());
 
             //  読み込んだテクスチャ情報
-            ID3D11ShaderResourceView* textureView = nullptr;
+            ComPtr<ID3D11ShaderResourceView> textureView = nullptr;
 
             //  パスを正式なパスに変換
             // std::string型のmodelDirectoryをstd::wstringに変換
@@ -138,7 +229,7 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             CreateTextureFromPath(m_device,m_deviceContext,fullPath,&textureView);
 
             //  モデルクラスに保存
-            model->AddTexture(textureView);
+            model->AddTexture(textureView.Get());
         }
 
         if (model->GetTextureCount() <= m) {
@@ -155,17 +246,20 @@ void ModelManager::LoadModel(std::vector<Model*>* models, string modelPath) {
             }
             model->AddTexture(textureView);
         }
+
+        material->Clear();
+
+        models->push_back(std::move(model));
     }
+
+    importer.FreeScene();
 }
 
 
 ModelManager::ModelManager(ID3D11Device1& device, ID3D11DeviceContext& deviceContext)
 {
-    m_models = std::vector<Model*>();
-
     m_device = &device;
     m_deviceContext = &deviceContext;
-    m_eraseTargetModels = std::vector<Model*>();
 }
 
 void ModelManager::AddComponent(IComponent* component) {
@@ -189,15 +283,16 @@ void ModelManager::AddComponent(IComponent* component) {
     //model->SetHitDetection(hitDetection);
 }
 
-std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
+std::vector<std::shared_ptr<Model>> ModelManager::CreateModelFromObj(string path)
 {
-    std::vector<Model*>* models = new std::vector<Model*>();
-    LoadModel(models, path);
+    //  生成したモデルのリスト
+    std::vector<std::shared_ptr<Model>> models;
+    
+    LoadModel(&models, path);
 
-    for(Model* model : *models){
+    for(auto& model : models) {
 
-        model->GetMesh().CreateBuffer(*m_device);
-
+        model->GetMesh()->CreateBuffer(*m_device);
         m_models.push_back(model);
     };
 
@@ -207,49 +302,49 @@ std::vector<Model*>* ModelManager::CreateModelFromObj(string path)
 void ModelManager::DrawUIAll()
 {
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto&  model : m_models) {
         DrawUI(i);
         i++;
     }
 }
 
 void ModelManager::DrawUI(int index) {
-    Model* model = m_models[index];
+    auto& model = m_models[index];
     if (model == nullptr) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
     if (ImGui::CollapsingHeader(model->GetName().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        for (IUIDebugComponent* componentView : model->GetComponentUIDebugViews()) {
+        for (auto& componentView : model->GetComponentUIDebugViews()) {
             componentView->ComponentUIRender();
         }
     }
 }
 
-void ModelManager::EraseModel(Model* model)
+void ModelManager::EraseModel(Model* targetModel)
 {
-    //  次のフレームで削除する
-    m_eraseTargetModels.push_back(model);
+    m_deleteModels.push_back(targetModel);
 }
 
-std::vector<Model*>& ModelManager::GetAllModels()
-{
-    return m_models;
+std::vector<Model*> ModelManager::GetAllModels() {
+    std::vector<Model*> modelsRawPointers;
+    for (auto& modelPtr : m_models) {
+        modelsRawPointers.push_back(modelPtr.get()); // std::unique_ptrから生ポインタを取得
+    }
+    return modelsRawPointers;
 }
 
 Model& ModelManager::GetModel(int index)
 {
-    Model* model = m_models[index];
-    if (model == nullptr) {
-        throw std::exception("ModelManager::GetModel() : model is nullptr.");
+    if (index < 0 || index >= static_cast<int>(m_models.size())) {
+        throw std::out_of_range("ModelManager::GetModel() : index is out of range.");
     }
-
-    return *model;
+    return *m_models[index];
 }
 
 void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         Draw(i, deviceContext, vsConstantBufferDisc, vsConstantBuffer);
         i++;
     }
@@ -257,12 +352,12 @@ void ModelManager::DrawAll(ID3D11DeviceContext& deviceContext, VsConstantBuffer&
 
 void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstantBuffer& vsConstantBufferDisc, ID3D11Buffer& vsConstantBuffer)
 {
-    Model* model = m_models[index];
+    auto& model = m_models[index];
     if (model == nullptr) {
         throw std::exception("ModelManager::GetModel() : model is nullptr.");
     }
 
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         //  頂点用の定数バッファのワールド座標更新
         XMStoreFloat4x4(&vsConstantBufferDisc.world, XMMatrixTranspose(model->GetTransform().GetWorldMatrix()));
         deviceContext.UpdateSubresource(&vsConstantBuffer, 0, nullptr, &vsConstantBufferDisc, 0, 0);
@@ -270,29 +365,24 @@ void ModelManager::Draw(int index, ID3D11DeviceContext& deviceContext, VsConstan
         //  テクスチャの設定
         if (model->GetTexture(0) != nullptr) {
             ID3D11ShaderResourceView* textureView = model->GetTexture(0);
-            ID3D11ShaderResourceView* views[] = { textureView };
+            ID3D11ShaderResourceView* views[] = { textureView};
             deviceContext.PSSetShaderResources(0, 1, views);
         }
 
-        model->GetMesh().Draw(deviceContext);
+        model->GetMesh()->Draw(deviceContext);
     }
 }
 
 void ModelManager::UpdateAll()
 {
-    //  削除対象のモデルを削除
-    for (Model* model : m_eraseTargetModels) {
-        auto it = std::find(m_models.begin(), m_models.end(), model);
-        if (it != m_models.end()) {
-            m_models.erase(it);
-            delete model;
-            model = nullptr;
-        }
+    //  削除リストの削除
+    for (auto& model : m_deleteModels) {
+        m_models.erase(std::remove_if(m_models.begin(), m_models.end(), [model](std::shared_ptr<Model> m) { return m.get() == model; }), m_models.end());
     }
-    m_eraseTargetModels.clear();
+    m_deleteModels.clear();
 
     int i = 0;
-    for (Model* model : m_models) {
+    for (auto& model : m_models) {
         Update(i);
         i++;
     }
@@ -300,8 +390,8 @@ void ModelManager::UpdateAll()
 
 void ModelManager::Update(int index)
 {
-    Model* model = m_models[index];
-    for(IComponent* component : *model->GetComponents()) {
+    auto& model = m_models[index];
+    for(std::shared_ptr<IComponent>& component : model->GetComponents()) {
         component->Update();
     };
 }

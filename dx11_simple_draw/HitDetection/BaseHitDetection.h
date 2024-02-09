@@ -24,7 +24,7 @@ public:
     }
 
     //  “–‚½‚è”»’è
-    virtual void HitCheck(vector<Model*>& allModels) = 0;
+    virtual void HitCheck(vector<Model*> allModels) = 0;
 
     //  Getter
     Model* GetModel() {

@@ -17,7 +17,7 @@ public:
     SphereHitDetection(Model* model,ModelManager* modelManager);
 
     //  “–‚½‚è”»’è
-    void HitCheck(vector<Model*>& allModels) override;
+    void HitCheck(vector<Model*> allModels) override;
 
     BoundingSphere GetBoundingSphere();
 
@@ -28,7 +28,7 @@ public:
 
 private:
     //  BoundingSphere‚Ì”¼Œa‚ÌŒvŽZ
-    float CalulateBoundingSphereRadius(const XMVECTOR& center, const std::vector<Vertex>& vertices);
+    float CalulateBoundingSphereRadius(const XMVECTOR& center, std::shared_ptr<std::vector<Vertex>>& vertices);
 
     //  ”¼Œa
     float m_radius;
